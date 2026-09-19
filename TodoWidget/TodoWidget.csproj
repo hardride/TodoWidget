@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Fonts\Inter-Regular.ttf" />
+    <Resource Include="Fonts\Inter-SemiBold.ttf" />
+    <Resource Include="Fonts\SourceCodePro-Regular.ttf" />
+    <Resource Include="Fonts\SourceCodePro-SemiBold.ttf" />
+    <Resource Include="Images\bg_a.png" />
+    <Resource Include="Images\btn.png" />
+    <Resource Include="Themes\Dark.xaml" />
+    <Resource Include="Themes\Light.xaml" />
+    <Resource Include="Themes\Kanagawa.xaml" />
+    <Resource Include="Themes\Argentina for Plemyannic.xaml" />
+    <Resource Include="Themes\Terminal.xaml" />
+    <Resource Include="Themes\Reilly.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.12" />
+  </ItemGroup>
+
+</Project>

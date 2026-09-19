@@ -1,0 +1,20 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Argentina for Plemyannic Theme -->
+    <SolidColorBrush x:Key="WidgetBg" Color="#F1E4DB"/>
+    <SolidColorBrush x:Key="TaskBg" Color="#F9F6F4"/>
+    <SolidColorBrush x:Key="TextPrimary" Color="#121417"/>
+    <SolidColorBrush x:Key="TextSecondary" Color="#7C7F87"/>
+    <SolidColorBrush x:Key="Accent" Color="#1F64A9"/>
+    <SolidColorBrush x:Key="AccentHover" Color="#2878C8"/>
+    <SolidColorBrush x:Key="DeleteFg" Color="#CF6969"/>
+    <SolidColorBrush x:Key="CheckboxBg" Color="#E4DDD8"/>
+    <SolidColorBrush x:Key="CheckboxHoverBg" Color="#D5CCC5"/>
+    <SolidColorBrush x:Key="IconHoverBg" Color="#E8DFD6"/>
+    <SolidColorBrush x:Key="InputBg" Color="#F9F6F4"/>
+    <SolidColorBrush x:Key="HeaderIconColor" Color="#7C7F87"/>
+    <BitmapImage x:Key="WidgetBackgroundImage" UriSource="pack://application:,,,/Images/bg_a.png"/>
+    <SolidColorBrush x:Key="BorderColor" Color="#F1E4DB"/>
+
+</ResourceDictionary>

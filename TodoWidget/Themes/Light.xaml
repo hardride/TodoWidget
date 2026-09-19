@@ -1,0 +1,19 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Light Theme -->
+    <SolidColorBrush x:Key="WidgetBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="TaskBg" Color="#EBEEF4"/>
+    <SolidColorBrush x:Key="TextPrimary" Color="#12151B"/>
+    <SolidColorBrush x:Key="TextSecondary" Color="#8C8C8C"/>
+    <SolidColorBrush x:Key="Accent" Color="#1F64A9"/>
+    <SolidColorBrush x:Key="AccentHover" Color="#2878C8"/>
+    <SolidColorBrush x:Key="DeleteFg" Color="#CF6969"/>
+    <SolidColorBrush x:Key="CheckboxBg" Color="#D0D3DA"/>
+    <SolidColorBrush x:Key="CheckboxHoverBg" Color="#C0C3CA"/>
+    <SolidColorBrush x:Key="IconHoverBg" Color="#E0E3EA"/>
+    <SolidColorBrush x:Key="InputBg" Color="#EBEEF4"/>
+    <SolidColorBrush x:Key="HeaderIconColor" Color="#404245"/>
+    <SolidColorBrush x:Key="BorderColor" Color="#D0D0D0"/>
+
+</ResourceDictionary>
