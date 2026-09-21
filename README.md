@@ -1,9 +1,7 @@
-# ADHD To-Do Widget
+# ADHD to-do Widget
 
 <p align="center">
-  <img src="assets/preview-syntwave.png" alt="Syntwave Theme" width="240"/>
-  <img src="assets/preview-pixel76.png" alt="Pixel-76 Theme" width="240"/>
-  <img src="assets/preview-terminal.png" alt="Terminal Theme" width="240"/>
+  <img src="assets/preview.png" alt="ADHD to-do Widget" width="320"/>
 </p>
 
 <p align="center">
@@ -23,27 +21,10 @@
 - **📌 Всегда под рукой (Always on Top)**: Закрепление поверх всех окон одной кнопкой.
 - **🔳 Режим плитки (32×32)**: Сворачивание в компактную плавающую плитку, которую можно переместить в любой угол экрана.
 - **👁 Регулировка прозрачности**: Настройка непрозрачности от 20% до 100% со слайдером. Автоматическое приглушение при потере фокуса.
-- **🎨 Разнообразные темы оформления**:
-  - **Syntwave** — неоновый ретро-вейв с розовым свечением текста.
-  - **Pixel-76** — эстетика авиации с атмосферным пиксель-арт фоном.
-  - **Terminal** — хакерский зелёный стиль с моноширинным шрифтом *Source Code Pro*.
-  - **Amber** — тёплая янтарная палитра для глаз.
-  - **Dark / Light** — классические минималистичные светлая и тёмная темы.
-  - **Kanagawa** — японская природная цветовая гамма.
-  - **Argentina for Plemyannic** — кастомная тема с фоновым артом.
-- **🔔 Системный трей**: Быстрое сворачивание в трей, восстановление по двойному клику и контекстное меню.
+- **🎨 Темы оформления**: Syntwave (со свечением текста), Pixel-76 (с пиксель-арт фоном), Amber, Terminal (шрифт *Source Code Pro*), Kanagawa, Dark, Light, Argentina for Plemyannic.
+- **🔔 Системный трей**: Быстрое сворачивание в трей, контекстное меню и восстановление по двойному клику.
 - **⚡ Single Instance**: Защита от случайного запуска нескольких копий виджета.
 - **💾 Сохранение данных**: Задачи и настройки темы сохраняются автоматически в `%LocalAppData%\TodoWidget\`.
-
----
-
-## 🖼 Темы оформления
-
-<p align="center">
-  <img src="assets/preview-dark.png" alt="Dark Theme" width="220"/>
-  <img src="assets/preview-amber.png" alt="Amber Theme" width="220"/>
-  <img src="assets/preview-syntwave.png" alt="Syntwave Theme" width="220"/>
-</p>
 
 ---
 
