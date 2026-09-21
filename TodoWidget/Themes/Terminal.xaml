@@ -2,20 +2,19 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- Terminal Theme -->
-    <SolidColorBrush x:Key="WidgetBg" Color="#12151B"/>
-    <SolidColorBrush x:Key="TaskBg" Color="#20232B"/>
-    <SolidColorBrush x:Key="TextPrimary" Color="#E9EAEA"/>
-    <SolidColorBrush x:Key="TextSecondary" Color="#8C8C8C"/>
-    <SolidColorBrush x:Key="Accent" Color="#1F64A9"/>
-    <SolidColorBrush x:Key="AccentHover" Color="#2878C8"/>
-    <SolidColorBrush x:Key="DeleteFg" Color="#CF6969"/>
-    <SolidColorBrush x:Key="CheckboxBg" Color="#2A2D35"/>
-    <SolidColorBrush x:Key="CheckboxHoverBg" Color="#33363D"/>
-    <SolidColorBrush x:Key="IconHoverBg" Color="#1A1D24"/>
-    <SolidColorBrush x:Key="InputBg" Color="#20232B"/>
-    <SolidColorBrush x:Key="HeaderIconColor" Color="#404245"/>
+    <SolidColorBrush x:Key="bg/widget" Color="#141729"/>
+    <SolidColorBrush x:Key="bg/task" Color="#1A1D2F"/>
+    <SolidColorBrush x:Key="bg/input" Color="#1A1D2F"/>
+    <SolidColorBrush x:Key="bg/checkbox-empty" Color="#282C43"/>
+    <SolidColorBrush x:Key="bg/checkbox-filled" Color="#21B568"/>
+    <SolidColorBrush x:Key="bg/button" Color="#21B568"/>
+    <SolidColorBrush x:Key="bg/soft" Color="#171A2C"/>
+    <SolidColorBrush x:Key="fg/primary" Color="#21B568"/>
+    <SolidColorBrush x:Key="fg/secondary" Color="#85899D"/>
+    <SolidColorBrush x:Key="fg/danger" Color="#CF20CB"/>
+    <SolidColorBrush x:Key="border/widget" Color="#35384C"/>
+    <SolidColorBrush x:Key="HeaderIconColor" Color="#85899D"/>
     <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Source Code Pro</FontFamily>
     <FontFamily x:Key="FontSemiBold">pack://application:,,,/Fonts/#Source Code Pro SemiBold</FontFamily>
-    <SolidColorBrush x:Key="BorderColor" Color="#272626"/>
 
 </ResourceDictionary>

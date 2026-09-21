@@ -46,7 +46,7 @@ public class TileWindow : Window
 
         _border = new Border
         {
-            CornerRadius = new CornerRadius(6),
+            CornerRadius = new CornerRadius(8),
             Cursor = Cursors.Hand,
             Width = 32,
             Height = 32,
@@ -102,7 +102,6 @@ public class TileWindow : Window
             if (!isDragging)
             {
                 _onRestore();
-                Close();
             }
         };
     }

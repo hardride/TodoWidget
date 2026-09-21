@@ -6,6 +6,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <Version>1.0.4</Version>
+    <AssemblyVersion>1.0.4.0</AssemblyVersion>
+    <FileVersion>1.0.4.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,13 +17,16 @@
     <Resource Include="Fonts\SourceCodePro-Regular.ttf" />
     <Resource Include="Fonts\SourceCodePro-SemiBold.ttf" />
     <Resource Include="Images\bg_a.png" />
+    <Resource Include="Images\bg_aerop.png" />
     <Resource Include="Images\btn.png" />
     <Resource Include="Themes\Dark.xaml" />
     <Resource Include="Themes\Light.xaml" />
     <Resource Include="Themes\Kanagawa.xaml" />
     <Resource Include="Themes\Argentina for Plemyannic.xaml" />
+    <Resource Include="Themes\Pixel-76.xaml" />
     <Resource Include="Themes\Terminal.xaml" />
-    <Resource Include="Themes\Reilly.xaml" />
+    <Resource Include="Themes\Amber.xaml" />
+    <Resource Include="Themes\Syntwave.xaml" />
   </ItemGroup>
 
   <ItemGroup>

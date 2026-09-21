@@ -2,18 +2,19 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- Kanagawa Theme -->
-    <SolidColorBrush x:Key="WidgetBg" Color="#24242D"/>
-    <SolidColorBrush x:Key="TaskBg" Color="#2A2B32"/>
-    <SolidColorBrush x:Key="TextPrimary" Color="#B7B39D"/>
-    <SolidColorBrush x:Key="TextSecondary" Color="#7A786E"/>
-    <SolidColorBrush x:Key="Accent" Color="#7E9CD8"/>
-    <SolidColorBrush x:Key="AccentHover" Color="#99ACF0"/>
-    <SolidColorBrush x:Key="DeleteFg" Color="#C34043"/>
-    <SolidColorBrush x:Key="CheckboxBg" Color="#424141"/>
-    <SolidColorBrush x:Key="CheckboxHoverBg" Color="#524F47"/>
-    <SolidColorBrush x:Key="IconHoverBg" Color="#363640"/>
-    <SolidColorBrush x:Key="InputBg" Color="#2A2B32"/>
+    <SolidColorBrush x:Key="bg/widget" Color="#24242D"/>
+    <SolidColorBrush x:Key="bg/task" Color="#2A2B32"/>
+    <SolidColorBrush x:Key="bg/input" Color="#2A2B32"/>
+    <SolidColorBrush x:Key="bg/checkbox-empty" Color="#424141"/>
+    <SolidColorBrush x:Key="bg/checkbox-filled" Color="#607CB5"/>
+    <SolidColorBrush x:Key="bg/button" Color="#607CB5"/>
+    <SolidColorBrush x:Key="bg/soft" Color="#363640"/>
+    <SolidColorBrush x:Key="fg/primary" Color="#B7B39D"/>
+    <SolidColorBrush x:Key="fg/secondary" Color="#7A786E"/>
+    <SolidColorBrush x:Key="fg/danger" Color="#C34043"/>
+    <SolidColorBrush x:Key="border/widget" Color="#3A3A3A"/>
     <SolidColorBrush x:Key="HeaderIconColor" Color="#5E5C51"/>
-    <SolidColorBrush x:Key="BorderColor" Color="#3A3A3A"/>
+    <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Inter</FontFamily>
+    <FontFamily x:Key="FontSemiBold">pack://application:,,,/Fonts/#Inter SemiBold</FontFamily>
 
 </ResourceDictionary>

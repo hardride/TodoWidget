@@ -1,0 +1,20 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Amber Theme -->
+    <SolidColorBrush x:Key="bg/widget" Color="#160D1B"/>
+    <SolidColorBrush x:Key="bg/task" Color="#251B25"/>
+    <SolidColorBrush x:Key="bg/input" Color="#251B25"/>
+    <SolidColorBrush x:Key="bg/checkbox-empty" Color="#3B2C2B"/>
+    <SolidColorBrush x:Key="bg/checkbox-filled" Color="#89642D"/>
+    <SolidColorBrush x:Key="bg/button" Color="#89642D"/>
+    <SolidColorBrush x:Key="bg/soft" Color="#1E1420"/>
+    <SolidColorBrush x:Key="fg/primary" Color="#C99951"/>
+    <SolidColorBrush x:Key="fg/secondary" Color="#67563D"/>
+    <SolidColorBrush x:Key="fg/danger" Color="#C34043"/>
+    <SolidColorBrush x:Key="border/widget" Color="#3A3A3A"/>
+    <SolidColorBrush x:Key="HeaderIconColor" Color="#67563D"/>
+    <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Inter</FontFamily>
+    <FontFamily x:Key="FontSemiBold">pack://application:,,,/Fonts/#Inter SemiBold</FontFamily>
+
+</ResourceDictionary>

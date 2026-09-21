@@ -16,10 +16,33 @@ public partial class MainWindow : Window
     private TaskbarIcon? _trayIcon;
     private bool _isPinned = true;
 
-    private static readonly SolidColorBrush AccentColor = new(Color.FromRgb(0x1F, 0x64, 0xA9));
-    private static readonly SolidColorBrush AccentHover = new(Color.FromRgb(0x28, 0x78, 0xC8));
     private static readonly SolidColorBrush PaintbrushColor = new(Color.FromRgb(0xBB, 0x69, 0xCF));
     private static readonly SolidColorBrush PaintbrushHover = new(Color.FromRgb(0xCC, 0x85, 0xDB));
+
+    public static SolidColorBrush CalculateHoverBrush(SolidColorBrush? baseBrush)
+    {
+        if (baseBrush == null) return Brushes.Transparent;
+        var c = baseBrush.Color;
+        double luminance = 0.299 * c.R + 0.587 * c.G + 0.114 * c.B;
+        int delta = luminance > 180 ? -0x1A : 0x1A;
+        byte r = (byte)Math.Clamp(c.R + delta, 0, 255);
+        byte g = (byte)Math.Clamp(c.G + delta, 0, 255);
+        byte b = (byte)Math.Clamp(c.B + delta, 0, 255);
+        var brush = new SolidColorBrush(Color.FromArgb(c.A, r, g, b));
+        brush.Freeze();
+        return brush;
+    }
+
+    private void UpdateDynamicHoverResources()
+    {
+        var emptyBrush = Application.Current.TryFindResource("bg/checkbox-empty") as SolidColorBrush;
+        var filledBrush = Application.Current.TryFindResource("bg/checkbox-filled") as SolidColorBrush;
+        var buttonBrush = (Application.Current.TryFindResource("bg/button") as SolidColorBrush) ?? filledBrush;
+
+        Application.Current.Resources["bg/checkbox-empty/hover"] = CalculateHoverBrush(emptyBrush);
+        Application.Current.Resources["bg/checkbox-filled/hover"] = CalculateHoverBrush(filledBrush);
+        Application.Current.Resources["bg/button/hover"] = CalculateHoverBrush(buttonBrush);
+    }
 
     private SolidColorBrush GetHeaderIconColor()
     {
@@ -28,18 +51,28 @@ public partial class MainWindow : Window
 
     private SolidColorBrush GetHeaderIconHover()
     {
-        var c = GetHeaderIconColor().Color;
-        return new SolidColorBrush(Color.FromArgb(c.A,
-            (byte)Math.Min(255, c.R + 0x1A),
-            (byte)Math.Min(255, c.G + 0x1A),
-            (byte)Math.Min(255, c.B + 0x1A)));
+        return CalculateHoverBrush(GetHeaderIconColor());
+    }
+
+    private SolidColorBrush GetAccentColor()
+    {
+        return (SolidColorBrush)FindResource("bg/checkbox-filled");
+    }
+
+    private SolidColorBrush GetAccentHover()
+    {
+        return CalculateHoverBrush(GetAccentColor());
     }
 
     public MainWindow()
     {
         // Load saved theme
         var savedTheme = _settings.Theme;
-        var validThemes = new[] { "Dark", "Light", "Kanagawa", "Argentina for Plemyannic", "Terminal", "Reilly" };
+        if (savedTheme == "Aeropixel")
+            savedTheme = "Pixel-76";
+        if (savedTheme == "Reilly")
+            savedTheme = "Amber";
+        var validThemes = new[] { "Dark", "Light", "Kanagawa", "Argentina for Plemyannic", "Terminal", "Amber", "Pixel-76", "Syntwave" };
         if (!validThemes.Contains(savedTheme))
             savedTheme = "Dark";
 
@@ -52,16 +85,18 @@ public partial class MainWindow : Window
                 new ResourceDictionary { Source = new Uri($"pack://application:,,,/Themes/{encoded}.xaml") });
         }
         _currentTheme = savedTheme;
+        UpdateDynamicHoverResources();
 
         InitializeComponent();
+        UpdateBackgroundImage(_currentTheme);
+        UpdateThemeCheckmarks();
         Loaded += MainWindow_Loaded;
         Activated += MainWindow_Activated;
         Deactivated += MainWindow_Deactivated;
         RefreshList();
 
         SetupTrayIcon();
-        SetupIconHover(ThemeIconPath, GetHeaderIconColor(), GetHeaderIconHover());
-        SetupIconHover(PinIconPath, _isPinned ? AccentColor : GetHeaderIconColor(), _isPinned ? AccentHover : GetHeaderIconHover());
+        SetupHeaderIcons();
 
         MouseLeftButtonDown += (s, e) =>
         {
@@ -70,13 +105,36 @@ public partial class MainWindow : Window
         };
     }
 
-    private void SetupIconHover(Path icon, SolidColorBrush normal, SolidColorBrush hover)
+    private void MainBorder_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (icon?.Parent is FrameworkElement element)
+        if (MainClip != null && MainBorder != null)
+            MainClip.Rect = new Rect(0, 0, MainBorder.ActualWidth, MainBorder.ActualHeight);
+    }
+
+    private void SetupHeaderIcons()
+    {
+        if (ThemeIconPath?.Parent is FrameworkElement themeBtn)
         {
-            element.MouseEnter += (s, e) => icon.Stroke = hover;
-            element.MouseLeave += (s, e) => icon.Stroke = normal;
+            themeBtn.MouseEnter += (s, e) => ThemeIconPath.Stroke = _showingThemes ? PaintbrushHover : GetHeaderIconHover();
+            themeBtn.MouseLeave += (s, e) => ThemeIconPath.Stroke = _showingThemes ? PaintbrushColor : GetHeaderIconColor();
         }
+
+        if (PinIconPath?.Parent is FrameworkElement pinBtn)
+        {
+            pinBtn.MouseEnter += (s, e) => PinIconPath.Stroke = _isPinned ? GetAccentHover() : GetHeaderIconHover();
+            pinBtn.MouseLeave += (s, e) => PinIconPath.Stroke = _isPinned ? GetAccentColor() : GetHeaderIconColor();
+        }
+
+        UpdateHeaderIconsTheme();
+    }
+
+    private void UpdateHeaderIconsTheme()
+    {
+        if (ThemeIconPath != null)
+        {
+            ThemeIconPath.Stroke = _showingThemes ? PaintbrushColor : GetHeaderIconColor();
+        }
+        UpdatePinIcon();
     }
 
     private void SetupTrayIcon()
@@ -94,12 +152,7 @@ public partial class MainWindow : Window
         contextMenu.Items.Add(exitItem);
         _trayIcon.ContextMenu = contextMenu;
 
-        _trayIcon.TrayMouseDoubleClick += (s, e) =>
-        {
-            Show();
-            WindowState = WindowState.Normal;
-            Activate();
-        };
+        _trayIcon.TrayMouseDoubleClick += (s, e) => RestoreWidget();
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -145,7 +198,6 @@ public partial class MainWindow : Window
             HeaderTitle.Text = "Themes";
             TaskCounter.Visibility = Visibility.Collapsed;
             ThemeIconPath.Stroke = PaintbrushColor;
-            SetupIconHover(ThemeIconPath, PaintbrushColor, PaintbrushHover);
             UpdateThemeCheckmarks();
         }
         else
@@ -155,7 +207,6 @@ public partial class MainWindow : Window
             HeaderTitle.Text = "ADHD to-do";
             TaskCounter.Visibility = Visibility.Visible;
             ThemeIconPath.Stroke = GetHeaderIconColor();
-            SetupIconHover(ThemeIconPath, GetHeaderIconColor(), GetHeaderIconHover());
         }
     }
 
@@ -164,7 +215,9 @@ public partial class MainWindow : Window
     private void KanagawaTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Kanagawa");
     private void ArgentinaTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Argentina for Plemyannic");
     private void TerminalTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Terminal");
-    private void ReillyTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Reilly");
+    private void AmberTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Amber");
+    private void Pixel76Theme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Pixel-76");
+    private void SyntwaveTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Syntwave");
 
     private void ApplyTheme(string theme)
     {
@@ -190,32 +243,46 @@ public partial class MainWindow : Window
             dicts.Add(new ResourceDictionary { Source = new Uri($"pack://application:,,,/Themes/{encoded}.xaml") });
         }
 
+        UpdateDynamicHoverResources();
+
         if (MainBorder != null) MainBorder.Opacity = savedOpacity;
 
-        // Show/hide background image for Argentina theme
-        if (ThemeBackgroundImage != null)
-        {
-            if (theme == "Argentina for Plemyannic")
-            {
-                // Load directly from disk (no caching) so replaced files take effect
-                var img = new BitmapImage();
-                img.BeginInit();
-                img.UriSource = new Uri("pack://application:,,,/Images/bg_a.png");
-                img.CacheOption = BitmapCacheOption.OnLoad;
-                img.EndInit();
-                img.Freeze();
-
-                ThemeBackgroundImage.Source = img;
-                ThemeBackgroundImage.Opacity = 1;
-            }
-            else
-            {
-                ThemeBackgroundImage.Source = null;
-                ThemeBackgroundImage.Opacity = 0;
-            }
-        }
-
+        UpdateBackgroundImage(theme);
+        UpdateHeaderIconsTheme();
         UpdateThemeCheckmarks();
+    }
+
+    private void UpdateBackgroundImage(string theme)
+    {
+        if (ThemeBackgroundImage == null) return;
+
+        if (theme == "Argentina for Plemyannic")
+        {
+            var img = new BitmapImage();
+            img.BeginInit();
+            img.UriSource = new Uri("pack://application:,,,/Images/bg_a.png");
+            img.CacheOption = BitmapCacheOption.OnLoad;
+            img.EndInit();
+            img.Freeze();
+            ThemeBackgroundImage.Source = img;
+            ThemeBackgroundImage.Opacity = 1;
+        }
+        else if (theme == "Pixel-76")
+        {
+            var img = new BitmapImage();
+            img.BeginInit();
+            img.UriSource = new Uri("pack://application:,,,/Images/bg_aerop.png");
+            img.CacheOption = BitmapCacheOption.OnLoad;
+            img.EndInit();
+            img.Freeze();
+            ThemeBackgroundImage.Source = img;
+            ThemeBackgroundImage.Opacity = 1;
+        }
+        else
+        {
+            ThemeBackgroundImage.Source = null;
+            ThemeBackgroundImage.Opacity = 0;
+        }
     }
 
     private void UpdateThemeCheckmarks()
@@ -225,7 +292,9 @@ public partial class MainWindow : Window
         KanagawaCheck.Opacity = _currentTheme == "Kanagawa" ? 1 : 0;
         ArgentinaCheck.Opacity = _currentTheme == "Argentina for Plemyannic" ? 1 : 0;
         TerminalCheck.Opacity = _currentTheme == "Terminal" ? 1 : 0;
-        ReillyCheck.Opacity = _currentTheme == "Reilly" ? 1 : 0;
+        AmberCheck.Opacity = _currentTheme == "Amber" ? 1 : 0;
+        Pixel76Check.Opacity = _currentTheme == "Pixel-76" ? 1 : 0;
+        SyntwaveCheck.Opacity = _currentTheme == "Syntwave" ? 1 : 0;
     }
 
     // === Pin ===
@@ -243,14 +312,12 @@ public partial class MainWindow : Window
         if (_isPinned)
         {
             PinIconPath.Data = (Geometry)FindResource("PinIcon");
-            PinIconPath.Stroke = AccentColor;
-            SetupIconHover(PinIconPath, AccentColor, AccentHover);
+            PinIconPath.Stroke = GetAccentColor();
         }
         else
         {
             PinIconPath.Data = (Geometry)FindResource("PinOffIcon");
             PinIconPath.Stroke = GetHeaderIconColor();
-            SetupIconHover(PinIconPath, GetHeaderIconColor(), GetHeaderIconHover());
         }
     }
 
@@ -273,32 +340,38 @@ public partial class MainWindow : Window
     // === Tile ===
     private TileWindow? _tile;
 
-    // === Tray ===
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
-        // Show tile at current widget position
-        _tile = new TileWindow(Left + Width / 2 - 16, Top + Height / 2 - 16, RestoreFromTile);
+        if (_tile != null)
+        {
+            var tile = _tile;
+            _tile = null;
+            tile.Close();
+        }
+        _tile = new TileWindow(Left + Width / 2 - 16, Top + Height / 2 - 16, RestoreWidget);
         _tile.Show();
         Hide();
     }
 
-    private void RestoreFromTile()
+    public void RestoreWidget()
     {
         if (_tile != null)
         {
-            Left = _tile.Left + 16 - Width / 2;
-            Top = _tile.Top + 16 - Height / 2;
+            var tile = _tile;
+            _tile = null;
+            Left = tile.Left + 16 - Width / 2;
+            Top = tile.Top + 16 - Height / 2;
+            tile.Close();
         }
         Show();
         WindowState = WindowState.Normal;
         Activate();
+        Focus();
     }
 
     private void ShowMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        Show();
-        WindowState = WindowState.Normal;
-        Activate();
+        RestoreWidget();
     }
 
     private void ExitMenuItem_Click(object sender, RoutedEventArgs e)

@@ -1,0 +1,21 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Syntwave Theme -->
+    <SolidColorBrush x:Key="bg/widget" Color="#080927"/>
+    <SolidColorBrush x:Key="bg/task" Color="#2A1D3D"/>
+    <SolidColorBrush x:Key="bg/input" Color="#2A1D3D"/>
+    <SolidColorBrush x:Key="bg/checkbox-empty" Color="#3C2C55"/>
+    <SolidColorBrush x:Key="bg/checkbox-filled" Color="#44B8EC"/>
+    <SolidColorBrush x:Key="bg/button" Color="#44B8EC"/>
+    <SolidColorBrush x:Key="bg/soft" Color="#1E152E"/>
+    <SolidColorBrush x:Key="fg/primary" Color="#FFC8EA"/>
+    <SolidColorBrush x:Key="fg/secondary" Color="#7C4366"/>
+    <SolidColorBrush x:Key="fg/danger" Color="#CE3E3E"/>
+    <SolidColorBrush x:Key="border/widget" Color="#2F2241"/>
+    <SolidColorBrush x:Key="HeaderIconColor" Color="#7C4366"/>
+    <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Inter</FontFamily>
+    <FontFamily x:Key="FontSemiBold">pack://application:,,,/Fonts/#Inter SemiBold</FontFamily>
+    <DropShadowEffect x:Key="TextGlowEffect" Color="#FB2AAA" BlurRadius="16" ShadowDepth="0" Opacity="0.7" RenderingBias="Quality"/>
+
+</ResourceDictionary>
