@@ -219,7 +219,7 @@ public partial class MainWindow : Window
     private void Pixel76Theme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Pixel-76");
     private void SyntwaveTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Syntwave");
 
-    private void ApplyTheme(string theme)
+    internal void ApplyTheme(string theme)
     {
         _currentTheme = theme;
         _settings.Theme = theme;
