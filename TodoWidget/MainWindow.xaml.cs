@@ -13,6 +13,7 @@ public partial class MainWindow : Window
 {
     private readonly TodoService _todoService = new();
     private readonly SettingsService _settings = new();
+    private readonly UpdateService _updateService = new();
     private TaskbarIcon? _trayIcon;
     private bool _isPinned = true;
 
@@ -97,6 +98,7 @@ public partial class MainWindow : Window
 
         SetupTrayIcon();
         SetupHeaderIcons();
+        _updateService.Start();
 
         MouseLeftButtonDown += (s, e) =>
         {
@@ -359,8 +361,23 @@ public partial class MainWindow : Window
         {
             var tile = _tile;
             _tile = null;
-            Left = tile.Left + 16 - Width / 2;
-            Top = tile.Top + 16 - Height / 2;
+
+            // Use ActualWidth/Height if available, fallback to Width/Height
+            double widgetW = ActualWidth > 0 ? ActualWidth : Width;
+            double widgetH = ActualHeight > 0 ? ActualHeight : Height;
+
+            // Center widget on tile
+            double desiredLeft = tile.Left + 16 - widgetW / 2;
+            double desiredTop = tile.Top + 16 - widgetH / 2;
+
+            // Clamp to primary screen bounds
+            var screenW = SystemParameters.PrimaryScreenWidth;
+            var screenH = SystemParameters.PrimaryScreenHeight;
+            desiredLeft = Math.Max(0, Math.Min(desiredLeft, screenW - widgetW));
+            desiredTop = Math.Max(0, Math.Min(desiredTop, screenH - widgetH));
+
+            Left = desiredLeft;
+            Top = desiredTop;
             tile.Close();
         }
         Show();
