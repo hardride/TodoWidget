@@ -36,10 +36,41 @@ public class TodoService
         }
     }
 
+    public void SetUrgent(string id)
+    {
+        // Only one task can be urgent at a time
+        foreach (var todo in _todos)
+            todo.IsUrgent = false;
+
+        var target = _todos.FirstOrDefault(t => t.Id == id);
+        if (target != null)
+            target.IsUrgent = true;
+
+        Save();
+    }
+
+    public void ClearUrgent()
+    {
+        foreach (var todo in _todos)
+            todo.IsUrgent = false;
+        Save();
+    }
+
     public void Remove(string id)
     {
         _todos.RemoveAll(t => t.Id == id);
         Save();
+    }
+
+    public void MoveToTop(string id)
+    {
+        var todo = _todos.FirstOrDefault(t => t.Id == id);
+        if (todo != null)
+        {
+            _todos.Remove(todo);
+            _todos.Insert(0, todo);
+            Save();
+        }
     }
 
     private void Load()

@@ -3,7 +3,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 using Hardcodet.Wpf.TaskbarNotification;
 using TodoWidget.Services;
 
@@ -16,6 +15,7 @@ public partial class MainWindow : Window
     private readonly UpdateService _updateService = new();
     private TaskbarIcon? _trayIcon;
     private bool _isPinned = true;
+    private bool _isUrgentMode;
 
     private static readonly SolidColorBrush PaintbrushColor = new(Color.FromRgb(0xBB, 0x69, 0xCF));
     private static readonly SolidColorBrush PaintbrushHover = new(Color.FromRgb(0xCC, 0x85, 0xDB));
@@ -94,6 +94,13 @@ public partial class MainWindow : Window
         Loaded += MainWindow_Loaded;
         Activated += MainWindow_Activated;
         Deactivated += MainWindow_Deactivated;
+
+        // Check for urgent tasks BEFORE RefreshList so it filters correctly
+        if (_todoService.GetAll().Any(t => t.IsUrgent))
+        {
+            _isUrgentMode = true;
+            TaskCounter.Visibility = Visibility.Collapsed;
+        }
         RefreshList();
 
         SetupTrayIcon();
@@ -440,6 +447,17 @@ public partial class MainWindow : Window
         if (sender is CheckBox checkbox && checkbox.Tag is string id)
         {
             _todoService.Toggle(id);
+            _todoService.MoveToTop(id);
+            // If the completed task was the urgent one, exit urgent mode
+            if (_isUrgentMode)
+            {
+                var item = _todoService.GetAll().FirstOrDefault(t => t.Id == id);
+                if (item != null && item.IsCompleted)
+                {
+                    _todoService.ClearUrgent();
+                    ExitUrgentMode();
+                }
+            }
             RefreshList();
         }
     }
@@ -449,15 +467,134 @@ public partial class MainWindow : Window
         if (sender is TextBlock textBlock && textBlock.Tag is string id)
         {
             _todoService.Remove(id);
+            if (_isUrgentMode)
+            {
+                _todoService.ClearUrgent();
+                ExitUrgentMode();
+            }
             RefreshList();
         }
+    }
+
+    private void TaskBorder_MouseEnter(object sender, MouseEventArgs e)
+    {
+        if (sender is Border border)
+        {
+            var todoItem = border.DataContext as Models.TodoItem;
+            if (todoItem != null && !todoItem.IsCompleted)
+            {
+                var fire = FindFireBorder(border);
+                if (fire != null) fire.Visibility = Visibility.Visible;
+            }
+        }
+    }
+
+    private void TaskBorder_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (sender is Border border)
+        {
+            var todoItem = border.DataContext as Models.TodoItem;
+            if (todoItem != null && !todoItem.IsUrgent)
+            {
+                var fire = FindFireBorder(border);
+                if (fire != null) fire.Visibility = Visibility.Collapsed;
+            }
+        }
+    }
+
+    private Border? FindFireBorder(DependencyObject parent)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is FrameworkElement fe && fe.Name == "FireBorder")
+                return (Border)child;
+            var result = FindFireBorder(child);
+            if (result != null) return result;
+        }
+        return null;
+    }
+
+    private void UrgentText_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Border border && border.Tag is string id)
+        {
+            var item = _todoService.GetAll().FirstOrDefault(t => t.Id == id);
+
+            // If clicking on already-urgent task → unmark it
+            if (item != null && item.IsUrgent)
+            {
+                _todoService.ClearUrgent();
+                ExitUrgentMode();
+                RefreshList();
+            }
+            else
+            {
+                // Mark as urgent (only one at a time)
+                _todoService.SetUrgent(id);
+                EnterUrgentMode();
+                RefreshList();
+                ShowUrgentFireIcons();
+            }
+        }
+    }
+
+    private void EnterUrgentMode()
+    {
+        _isUrgentMode = true;
+        TaskCounter.Visibility = Visibility.Collapsed;
+    }
+
+    private void ExitUrgentMode()
+    {
+        _isUrgentMode = false;
+        HeaderTitle.Text = "ADHD to-do";
+        TaskCounter.Visibility = Visibility.Visible;
+        UpdateTaskCounter();
     }
 
     private void RefreshList()
     {
         var todos = _todoService.GetAll();
-        TodoList.ItemsSource = null;
-        TodoList.ItemsSource = todos;
+        if (_isUrgentMode)
+        {
+            // Show only the urgent task
+            var urgent = todos.Where(t => t.IsUrgent).ToList();
+            TodoList.ItemsSource = null;
+            TodoList.ItemsSource = urgent;
+        }
+        else
+        {
+            TodoList.ItemsSource = null;
+            TodoList.ItemsSource = todos;
+        }
+        UpdateTaskCounter();
+        ShowUrgentFireIcons();
+    }
+
+    private void ShowUrgentFireIcons()
+    {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            for (int i = 0; i < TodoList.Items.Count; i++)
+            {
+                var item = TodoList.Items[i] as Models.TodoItem;
+                if (item?.IsUrgent == true)
+                {
+                    var container = TodoList.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+                    if (container != null)
+                    {
+                        var fire = FindFireBorder(container);
+                        if (fire != null) fire.Visibility = Visibility.Visible;
+                    }
+                }
+            }
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private void UpdateTaskCounter()
+    {
+        var todos = _todoService.GetAll();
         var total = todos.Count;
         var completed = todos.Count(t => t.IsCompleted);
         TaskCounter.Text = $"{completed}/{total}";
