@@ -44,7 +44,7 @@ public class UpdateService
             {
                 var url = doc.RootElement.GetProperty("html_url").GetString();
                 var result = MessageBox.Show(
-                    $"Доступна новая версия v{latest}!\nТекущая: v{current}\n\nОткрыть страницу загрузки?",
+                    $"ADHD to-do обновился и теперь тебя ждёт v{latest}!\n\nОткрыть страницу загрузки?",
                     "Обновление доступно",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Information);

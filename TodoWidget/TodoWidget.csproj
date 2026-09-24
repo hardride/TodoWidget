@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Images\icon.ico</ApplicationIcon>
     <Version>1.0.5</Version>
     <AssemblyVersion>1.0.5.0</AssemblyVersion>
     <FileVersion>1.0.5.0</FileVersion>
@@ -19,6 +20,7 @@
     <Resource Include="Images\bg_a.png" />
     <Resource Include="Images\bg_aerop.png" />
     <Resource Include="Images\btn.png" />
+    <Resource Include="Images\icon.ico" />
     <Resource Include="Animations\flame.json" />
     <Resource Include="Themes\Dark.xaml" />
     <Resource Include="Themes\Light.xaml" />
