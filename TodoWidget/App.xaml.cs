@@ -26,16 +26,21 @@ public partial class App : Application
         // Listen for signals from duplicate launch attempts
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            while (_instanceEvent.WaitOne())
+            try
             {
-                Current?.Dispatcher.BeginInvoke(() =>
+                while (_instanceEvent != null && _instanceEvent.WaitOne())
                 {
-                    if (Current?.MainWindow is MainWindow mw)
+                    Current?.Dispatcher.BeginInvoke(() =>
                     {
-                        mw.RestoreWidget();
-                    }
-                });
+                        if (Current?.MainWindow is MainWindow mw)
+                        {
+                            mw.RestoreWidget();
+                        }
+                    });
+                }
             }
+            catch (ObjectDisposedException) { }
+            catch (AbandonedMutexException) { }
         });
 
         base.OnStartup(e);

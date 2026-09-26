@@ -32,6 +32,11 @@ public class TodoService
         if (todo != null)
         {
             todo.IsCompleted = !todo.IsCompleted;
+            if (todo.IsCompleted && todo.IsUrgent)
+            {
+                todo.IsUrgent = false;
+                todo.UrgentStartedAt = null;
+            }
             Save();
         }
     }
@@ -40,11 +45,17 @@ public class TodoService
     {
         // Only one task can be urgent at a time
         foreach (var todo in _todos)
+        {
             todo.IsUrgent = false;
+            todo.UrgentStartedAt = null;
+        }
 
         var target = _todos.FirstOrDefault(t => t.Id == id);
-        if (target != null)
+        if (target != null && !target.IsCompleted)
+        {
             target.IsUrgent = true;
+            target.UrgentStartedAt = DateTime.UtcNow;
+        }
 
         Save();
     }
@@ -52,7 +63,10 @@ public class TodoService
     public void ClearUrgent()
     {
         foreach (var todo in _todos)
+        {
             todo.IsUrgent = false;
+            todo.UrgentStartedAt = null;
+        }
         Save();
     }
 
@@ -73,18 +87,53 @@ public class TodoService
         }
     }
 
+    public void MoveBefore(string draggedId, string targetId)
+    {
+        var dragged = _todos.FirstOrDefault(t => t.Id == draggedId);
+        var target = _todos.FirstOrDefault(t => t.Id == targetId);
+        if (dragged == null || target == null || draggedId == targetId) return;
+
+        _todos.Remove(dragged);
+        var targetIndex = _todos.IndexOf(target);
+        _todos.Insert(targetIndex, dragged);
+        Save();
+    }
+
+    public void MoveAfter(string draggedId, string targetId)
+    {
+        var dragged = _todos.FirstOrDefault(t => t.Id == draggedId);
+        var target = _todos.FirstOrDefault(t => t.Id == targetId);
+        if (dragged == null || target == null || draggedId == targetId) return;
+
+        _todos.Remove(dragged);
+        var targetIndex = _todos.IndexOf(target);
+        _todos.Insert(targetIndex + 1, dragged);
+        Save();
+    }
+
     private void Load()
     {
         if (File.Exists(_filePath))
         {
-            var json = File.ReadAllText(_filePath);
-            _todos = JsonSerializer.Deserialize<List<TodoItem>>(json) ?? new();
+            try
+            {
+                var json = File.ReadAllText(_filePath);
+                _todos = JsonSerializer.Deserialize<List<TodoItem>>(json) ?? new();
+            }
+            catch
+            {
+                _todos = new();
+            }
         }
     }
 
     private void Save()
     {
-        var json = JsonSerializer.Serialize(_todos, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(_filePath, json);
+        try
+        {
+            var json = JsonSerializer.Serialize(_todos, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(_filePath, json);
+        }
+        catch { }
     }
 }

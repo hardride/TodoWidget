@@ -12,7 +12,7 @@
     <SolidColorBrush x:Key="fg/primary" Color="#21B568"/>
     <SolidColorBrush x:Key="fg/secondary" Color="#85899D"/>
     <SolidColorBrush x:Key="fg/danger" Color="#CF20CB"/>
-    <SolidColorBrush x:Key="border/widget" Color="#35384C"/>
+    <SolidColorBrush x:Key="border/widget" Color="#252738"/>
     <SolidColorBrush x:Key="HeaderIconColor" Color="#85899D"/>
     <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Source Code Pro</FontFamily>
     <FontFamily x:Key="FontSemiBold">pack://application:,,,/Fonts/#Source Code Pro SemiBold</FontFamily>

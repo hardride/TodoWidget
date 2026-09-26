@@ -7,9 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Images\icon.ico</ApplicationIcon>
-    <Version>1.0.5</Version>
-    <AssemblyVersion>1.0.5.0</AssemblyVersion>
-    <FileVersion>1.0.5.0</FileVersion>
+    <Version>1.0.6</Version>
+    <AssemblyVersion>1.0.6.0</AssemblyVersion>
+    <FileVersion>1.0.6.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +20,7 @@
     <Resource Include="Images\bg_a.png" />
     <Resource Include="Images\bg_aerop.png" />
     <Resource Include="Images\btn.png" />
+    <Resource Include="Images\btn-urgent.png" />
     <Resource Include="Images\icon.ico" />
     <Resource Include="Animations\flame.json" />
     <Resource Include="Themes\Dark.xaml" />
@@ -27,9 +28,11 @@
     <Resource Include="Themes\Kanagawa.xaml" />
     <Resource Include="Themes\Argentina for Plemyannic.xaml" />
     <Resource Include="Themes\Pixel-76.xaml" />
+    <Resource Include="Themes\Aeropixel.xaml" />
     <Resource Include="Themes\Terminal.xaml" />
     <Resource Include="Themes\Amber.xaml" />
     <Resource Include="Themes\Syntwave.xaml" />
+    <Resource Include="Themes\Stormcloud.xaml" />
   </ItemGroup>
 
   <ItemGroup>

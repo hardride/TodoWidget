@@ -14,6 +14,18 @@ public class SettingsService
         set { _settings.Theme = value; Save(); }
     }
 
+    public double Opacity
+    {
+        get => _settings.Opacity;
+        set { _settings.Opacity = value; Save(); }
+    }
+
+    public bool IsPinned
+    {
+        get => _settings.IsPinned;
+        set { _settings.IsPinned = value; Save(); }
+    }
+
     public SettingsService()
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -37,11 +49,17 @@ public class SettingsService
 
     private void Save()
     {
-        File.WriteAllText(_path, JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true }));
+        try
+        {
+            File.WriteAllText(_path, JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch { }
     }
 
     private class AppSettings
     {
         public string Theme { get; set; } = "Dark";
+        public double Opacity { get; set; } = 1.0;
+        public bool IsPinned { get; set; } = true;
     }
 }
