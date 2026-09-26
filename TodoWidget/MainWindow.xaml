@@ -32,6 +32,7 @@
         <!-- Icon button style -->
         <Style x:Key="IconButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource HeaderIconColor}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="6"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -44,14 +45,28 @@
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{DynamicResource bg/soft}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource bg/soft}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource fg/primary}"/>
+                </Trigger>
+                <Trigger Property="Tag" Value="Active">
+                    <Setter Property="Background" Value="{DynamicResource bg/task}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource fg/primary}"/>
+                </Trigger>
+                <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                        <Condition Property="Tag" Value="Active"/>
+                        <Condition Property="IsMouseOver" Value="True"/>
+                    </MultiTrigger.Conditions>
+                    <Setter Property="Background" Value="{DynamicResource bg/task}"/>
+                    <Setter Property="Opacity" Value="0.85"/>
+                    <Setter Property="Foreground" Value="{DynamicResource fg/primary}"/>
+                </MultiTrigger>
+            </Style.Triggers>
         </Style>
 
         <!-- TextBox without focus border -->
@@ -142,7 +157,7 @@
             <Image x:Name="ThemeBackgroundImage" Grid.Row="0" Grid.RowSpan="4" Stretch="None" VerticalAlignment="Bottom" HorizontalAlignment="Center" Opacity="0" IsHitTestVisible="False" RenderOptions.BitmapScalingMode="HighQuality"/>
 
             <!-- Header -->
-            <Border Grid.Row="0" Background="{DynamicResource bg/widget}" Padding="12,10">
+            <Border Grid.Row="0" Background="Transparent" Padding="12,10">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -159,23 +174,23 @@
                     </StackPanel>
 
                     <!-- Theme (paintbrush) -->
-                    <Button Grid.Column="1" Style="{StaticResource IconButtonStyle}" Click="ThemeButton_Click">
-                        <Path Name="ThemeIconPath" Data="{StaticResource PaintbrushIcon}" Stroke="#404245" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="18" Height="18" Stretch="Uniform"/>
+                    <Button x:Name="ThemeButton" Grid.Column="1" Style="{StaticResource IconButtonStyle}" Click="ThemeButton_Click">
+                        <Path x:Name="ThemeIconPath" Data="{StaticResource PaintbrushIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="18" Height="18" Stretch="Uniform"/>
                     </Button>
 
                     <!-- Opacity (blend) -->
-                    <Button Grid.Column="2" Style="{StaticResource IconButtonStyle}" Click="OpacityButton_Click">
-                        <Path Data="{StaticResource BlendIcon}" Stroke="{DynamicResource HeaderIconColor}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="18" Height="18" Stretch="Uniform"/>
+                    <Button x:Name="OpacityButton" Grid.Column="2" Style="{StaticResource IconButtonStyle}" Click="OpacityButton_Click">
+                        <Path x:Name="OpacityIconPath" Data="{StaticResource BlendIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="18" Height="18" Stretch="Uniform"/>
                     </Button>
 
                     <!-- Pin -->
-                    <Button Grid.Column="3" Style="{StaticResource IconButtonStyle}" Click="PinButton_Click">
-                        <Path Name="PinIconPath" Data="{StaticResource PinIcon}" Stroke="#1F64A9" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="18" Height="18" Stretch="Uniform"/>
+                    <Button x:Name="PinButton" Grid.Column="3" Style="{StaticResource IconButtonStyle}" Click="PinButton_Click">
+                        <Path x:Name="PinIconPath" Data="{StaticResource PinIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="18" Height="18" Stretch="Uniform"/>
                     </Button>
 
                     <!-- Minimize to tray -->
-                    <Button Grid.Column="4" Style="{StaticResource IconButtonStyle}" Click="CloseButton_Click">
-                        <Path Data="{StaticResource Minimize2Icon}" Stroke="{DynamicResource HeaderIconColor}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="18" Height="18" Stretch="Uniform"/>
+                    <Button x:Name="CloseButton" Grid.Column="4" Style="{StaticResource IconButtonStyle}" Click="CloseButton_Click">
+                        <Path x:Name="CloseIconPath" Data="{StaticResource Minimize2Icon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="18" Height="18" Stretch="Uniform"/>
                     </Button>
                 </Grid>
             </Border>
@@ -542,6 +557,78 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Stormcloud" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontRegular}" FontSize="14" VerticalAlignment="Center"/>
                             <Path x:Name="StormcloudCheck" Grid.Column="1" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource bg/checkbox-filled}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Opacity="0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Deep Antarctic theme -->
+                    <Border x:Name="DeepAntarcticThemeItem" Background="{DynamicResource bg/task}" CornerRadius="8" Padding="12,10" Margin="0,0,0,6" Cursor="Hand" MouseLeftButtonDown="DeepAntarcticTheme_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Deep Antarctic" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontRegular}" FontSize="14" VerticalAlignment="Center"/>
+                            <Path x:Name="DeepAntarcticCheck" Grid.Column="1" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource bg/checkbox-filled}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Opacity="0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Druid theme -->
+                    <Border x:Name="DruidThemeItem" Background="{DynamicResource bg/task}" CornerRadius="8" Padding="12,10" Margin="0,0,0,6" Cursor="Hand" MouseLeftButtonDown="DruidTheme_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Druid" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontRegular}" FontSize="14" VerticalAlignment="Center"/>
+                            <Path x:Name="DruidCheck" Grid.Column="1" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource bg/checkbox-filled}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Opacity="0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Hoarfrost theme -->
+                    <Border x:Name="HoarfrostThemeItem" Background="{DynamicResource bg/task}" CornerRadius="8" Padding="12,10" Margin="0,0,0,6" Cursor="Hand" MouseLeftButtonDown="HoarfrostTheme_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Hoarfrost" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontRegular}" FontSize="14" VerticalAlignment="Center"/>
+                            <Path x:Name="HoarfrostCheck" Grid.Column="1" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource bg/checkbox-filled}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Opacity="0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Coalglow theme -->
+                    <Border x:Name="CoalglowThemeItem" Background="{DynamicResource bg/task}" CornerRadius="8" Padding="12,10" Margin="0,0,0,6" Cursor="Hand" MouseLeftButtonDown="CoalglowTheme_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Coalglow" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontRegular}" FontSize="14" VerticalAlignment="Center"/>
+                            <Path x:Name="CoalglowCheck" Grid.Column="1" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource bg/checkbox-filled}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Opacity="0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Nocturnal K theme -->
+                    <Border x:Name="NocturnalKThemeItem" Background="{DynamicResource bg/task}" CornerRadius="8" Padding="12,10" Margin="0,0,0,6" Cursor="Hand" MouseLeftButtonDown="NocturnalKTheme_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Nocturnal K" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontRegular}" FontSize="14" VerticalAlignment="Center"/>
+                            <Path x:Name="NocturnalKCheck" Grid.Column="1" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource bg/checkbox-filled}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Opacity="0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Graffity theme -->
+                    <Border x:Name="GraffityThemeItem" Background="{DynamicResource bg/task}" CornerRadius="8" Padding="12,10" Margin="0,0,0,6" Cursor="Hand" MouseLeftButtonDown="GraffityTheme_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Graffity" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontRegular}" FontSize="14" VerticalAlignment="Center"/>
+                            <Path x:Name="GraffityCheck" Grid.Column="1" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource bg/checkbox-filled}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Opacity="0"/>
                         </Grid>
                     </Border>
                 </StackPanel>

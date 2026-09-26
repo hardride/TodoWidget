@@ -25,9 +25,6 @@ public partial class MainWindow : Window
     private System.Windows.Threading.DispatcherTimer? _urgentTimer;
     private DateTime? _urgentStartTime;
 
-    private static readonly SolidColorBrush PaintbrushColor = new(Color.FromRgb(0xBB, 0x69, 0xCF));
-    private static readonly SolidColorBrush PaintbrushHover = new(Color.FromRgb(0xCC, 0x85, 0xDB));
-
     public static SolidColorBrush CalculateHoverBrush(SolidColorBrush? baseBrush)
     {
         if (baseBrush == null) return Brushes.Transparent;
@@ -53,26 +50,6 @@ public partial class MainWindow : Window
         Application.Current.Resources["bg/button/hover"] = CalculateHoverBrush(buttonBrush);
     }
 
-    private SolidColorBrush GetHeaderIconColor()
-    {
-        return (SolidColorBrush)FindResource("HeaderIconColor");
-    }
-
-    private SolidColorBrush GetHeaderIconHover()
-    {
-        return CalculateHoverBrush(GetHeaderIconColor());
-    }
-
-    private SolidColorBrush GetAccentColor()
-    {
-        return (SolidColorBrush)FindResource("bg/checkbox-filled");
-    }
-
-    private SolidColorBrush GetAccentHover()
-    {
-        return CalculateHoverBrush(GetAccentColor());
-    }
-
     public MainWindow()
     {
         // Load saved theme
@@ -81,7 +58,9 @@ public partial class MainWindow : Window
             savedTheme = "Aeropixel";
         if (savedTheme == "Reilly")
             savedTheme = "Amber";
-        var validThemes = new[] { "Dark", "Light", "Kanagawa", "Argentina for Plemyannic", "Terminal", "Amber", "Pixel-76", "Aeropixel", "Syntwave", "Stormcloud" };
+        if (savedTheme == "K in the night")
+            savedTheme = "Nocturnal K";
+        var validThemes = new[] { "Dark", "Light", "Kanagawa", "Argentina for Plemyannic", "Terminal", "Amber", "Pixel-76", "Aeropixel", "Syntwave", "Stormcloud", "Deep Antarctic", "Druid", "Hoarfrost", "Coalglow", "Nocturnal K", "Graffity" };
         if (!validThemes.Contains(savedTheme))
             savedTheme = "Dark";
 
@@ -207,28 +186,22 @@ public partial class MainWindow : Window
 
     private void SetupHeaderIcons()
     {
-        if (ThemeIconPath?.Parent is FrameworkElement themeBtn)
-        {
-            themeBtn.MouseEnter += (s, e) => ThemeIconPath.Stroke = _showingThemes ? PaintbrushHover : GetHeaderIconHover();
-            themeBtn.MouseLeave += (s, e) => ThemeIconPath.Stroke = _showingThemes ? PaintbrushColor : GetHeaderIconColor();
-        }
-
-        if (PinIconPath?.Parent is FrameworkElement pinBtn)
-        {
-            pinBtn.MouseEnter += (s, e) => PinIconPath.Stroke = _isPinned ? GetAccentHover() : GetHeaderIconHover();
-            pinBtn.MouseLeave += (s, e) => PinIconPath.Stroke = _isPinned ? GetAccentColor() : GetHeaderIconColor();
-        }
-
-        UpdateHeaderIconsTheme();
+        UpdateHeaderIcons();
     }
 
-    private void UpdateHeaderIconsTheme()
+    private void UpdateHeaderIcons()
     {
-        if (ThemeIconPath != null)
-        {
-            ThemeIconPath.Stroke = _showingThemes ? PaintbrushColor : GetHeaderIconColor();
-        }
-        UpdatePinIcon();
+        if (ThemeButton != null)
+            ThemeButton.Tag = _showingThemes ? "Active" : null;
+
+        if (OpacityButton != null)
+            OpacityButton.Tag = (OpacitySliderBorder?.Visibility == Visibility.Visible) ? "Active" : null;
+
+        if (PinButton != null)
+            PinButton.Tag = _isPinned ? "Active" : null;
+
+        if (PinIconPath != null)
+            PinIconPath.Data = (StreamGeometry)FindResource(_isPinned ? "PinIcon" : "PinOffIcon");
     }
 
     private void SetupTrayIcon()
@@ -300,14 +273,12 @@ public partial class MainWindow : Window
             HeaderTitle.Text = "Themes";
             TimerText.Visibility = Visibility.Collapsed;
             TaskCounter.Visibility = Visibility.Collapsed;
-            ThemeIconPath.Stroke = PaintbrushColor;
             UpdateThemeCheckmarks();
         }
         else
         {
             ThemesView.Visibility = Visibility.Collapsed;
             TasksView.Visibility = Visibility.Visible;
-            ThemeIconPath.Stroke = GetHeaderIconColor();
 
             if (_isUrgentMode)
             {
@@ -324,6 +295,8 @@ public partial class MainWindow : Window
                 TimerText.Visibility = Visibility.Collapsed;
             }
         }
+
+        UpdateHeaderIcons();
     }
 
     private void DarkTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Dark");
@@ -335,6 +308,12 @@ public partial class MainWindow : Window
     private void Pixel76Theme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Aeropixel");
     private void SyntwaveTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Syntwave");
     private void StormcloudTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Stormcloud");
+    private void DeepAntarcticTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Deep Antarctic");
+    private void DruidTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Druid");
+    private void HoarfrostTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Hoarfrost");
+    private void CoalglowTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Coalglow");
+    private void NocturnalKTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Nocturnal K");
+    private void GraffityTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Graffity");
 
     private void ApplyTheme(string theme)
     {
@@ -366,7 +345,7 @@ public partial class MainWindow : Window
         if (OutlineBorder != null) OutlineBorder.Opacity = savedOpacity;
 
         UpdateBackgroundImage(theme);
-        UpdateHeaderIconsTheme();
+        UpdateHeaderIcons();
         UpdateThemeCheckmarks();
     }
 
@@ -379,6 +358,8 @@ public partial class MainWindow : Window
             "Argentina for Plemyannic" => "bg_a.png",
             "Aeropixel" => "bg_aerop.png",
             "Pixel-76" => "bg_aerop.png",
+            "Nocturnal K" => "bg_best.png",
+            "Graffity" => "bg_graf.png",
             _ => null
         };
 
@@ -414,6 +395,12 @@ public partial class MainWindow : Window
         if (Pixel76Check != null) Pixel76Check.Opacity = (_currentTheme == "Pixel-76" || _currentTheme == "Aeropixel") ? 1 : 0;
         if (SyntwaveCheck != null) SyntwaveCheck.Opacity = _currentTheme == "Syntwave" ? 1 : 0;
         if (StormcloudCheck != null) StormcloudCheck.Opacity = _currentTheme == "Stormcloud" ? 1 : 0;
+        if (DeepAntarcticCheck != null) DeepAntarcticCheck.Opacity = _currentTheme == "Deep Antarctic" ? 1 : 0;
+        if (DruidCheck != null) DruidCheck.Opacity = _currentTheme == "Druid" ? 1 : 0;
+        if (HoarfrostCheck != null) HoarfrostCheck.Opacity = _currentTheme == "Hoarfrost" ? 1 : 0;
+        if (CoalglowCheck != null) CoalglowCheck.Opacity = _currentTheme == "Coalglow" ? 1 : 0;
+        if (NocturnalKCheck != null) NocturnalKCheck.Opacity = _currentTheme == "Nocturnal K" ? 1 : 0;
+        if (GraffityCheck != null) GraffityCheck.Opacity = _currentTheme == "Graffity" ? 1 : 0;
     }
 
     // === Controls ===
@@ -422,16 +409,8 @@ public partial class MainWindow : Window
         _isPinned = !_isPinned;
         _settings.IsPinned = _isPinned;
         Topmost = _isPinned;
-        UpdatePinIcon();
-    }
-
-    private void UpdatePinIcon()
-    {
-        if (PinIconPath != null)
-        {
-            PinIconPath.Data = (StreamGeometry)FindResource(_isPinned ? "PinIcon" : "PinOffIcon");
-            PinIconPath.Stroke = _isPinned ? GetAccentColor() : GetHeaderIconColor();
-        }
+        _tile?.SetPinned(_isPinned);
+        UpdateHeaderIcons();
     }
 
     private void OpacityButton_Click(object sender, RoutedEventArgs e)
@@ -439,6 +418,7 @@ public partial class MainWindow : Window
         OpacitySliderBorder.Visibility = OpacitySliderBorder.Visibility == Visibility.Visible
             ? Visibility.Collapsed
             : Visibility.Visible;
+        UpdateHeaderIcons();
     }
 
     private void OpacitySlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -460,7 +440,7 @@ public partial class MainWindow : Window
             _tile = null;
             tile.Close();
         }
-        _tile = new TileWindow(Left + Width / 2 - 16, Top + Height / 2 - 16, RestoreWidget, _isUrgentMode);
+        _tile = new TileWindow(Left + Width / 2 - 16, Top + Height / 2 - 16, RestoreWidget, _isUrgentMode, _isPinned);
         _tile.Show();
         Hide();
     }
@@ -502,7 +482,6 @@ public partial class MainWindow : Window
             HeaderTitle.Text = "Themes";
             TimerText.Visibility = Visibility.Collapsed;
             TaskCounter.Visibility = Visibility.Collapsed;
-            if (ThemeIconPath != null) ThemeIconPath.Stroke = PaintbrushColor;
             UpdateThemeCheckmarks();
         }
         else if (_isUrgentMode)
@@ -512,7 +491,6 @@ public partial class MainWindow : Window
             HeaderTitle.Visibility = Visibility.Collapsed;
             TaskCounter.Visibility = Visibility.Collapsed;
             TimerText.Visibility = Visibility.Visible;
-            if (ThemeIconPath != null) ThemeIconPath.Stroke = GetHeaderIconColor();
             UpdateTimerDisplay();
         }
         else
@@ -523,8 +501,9 @@ public partial class MainWindow : Window
             HeaderTitle.Text = "ADHD to-do";
             TaskCounter.Visibility = Visibility.Visible;
             TimerText.Visibility = Visibility.Collapsed;
-            if (ThemeIconPath != null) ThemeIconPath.Stroke = GetHeaderIconColor();
         }
+
+        UpdateHeaderIcons();
     }
 
     private void ShowMenuItem_Click(object sender, RoutedEventArgs e) => RestoreWidget();

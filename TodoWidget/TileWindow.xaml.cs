@@ -26,7 +26,7 @@ public class TileWindow : Window
     private readonly Border _border;
     private readonly Image _image;
 
-    public TileWindow(double left, double top, Action onRestore, bool isUrgent = false)
+    public TileWindow(double left, double top, Action onRestore, bool isUrgent = false, bool isPinned = true)
     {
         _onRestore = onRestore;
 
@@ -36,7 +36,7 @@ public class TileWindow : Window
         WindowStartupLocation = WindowStartupLocation.Manual;
         Left = left;
         Top = top;
-        Topmost = true;
+        Topmost = isPinned;
         WindowStyle = WindowStyle.None;
         AllowsTransparency = true;
         Background = Brushes.Transparent;
@@ -116,5 +116,10 @@ public class TileWindow : Window
     public void SetUrgent(bool isUrgent)
     {
         _image.Source = isUrgent ? UrgentImage : NormalImage;
+    }
+
+    public void SetPinned(bool isPinned)
+    {
+        Topmost = isPinned;
     }
 }

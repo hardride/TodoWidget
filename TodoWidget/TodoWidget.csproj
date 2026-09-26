@@ -7,9 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Images\icon.ico</ApplicationIcon>
-    <Version>1.0.6</Version>
-    <AssemblyVersion>1.0.6.0</AssemblyVersion>
-    <FileVersion>1.0.6.0</FileVersion>
+    <Version>1.0.6.1</Version>
+    <AssemblyVersion>1.0.6.1</AssemblyVersion>
+    <FileVersion>1.0.6.1</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +19,9 @@
     <Resource Include="Fonts\SourceCodePro-SemiBold.ttf" />
     <Resource Include="Images\bg_a.png" />
     <Resource Include="Images\bg_aerop.png" />
+    <Resource Include="Images\bg_best.png" />
+    <Resource Include="Images\bg_graf.png" />
+    <Resource Include="Images\bg_hole.png" />
     <Resource Include="Images\btn.png" />
     <Resource Include="Images\btn-urgent.png" />
     <Resource Include="Images\icon.ico" />
@@ -33,6 +36,12 @@
     <Resource Include="Themes\Amber.xaml" />
     <Resource Include="Themes\Syntwave.xaml" />
     <Resource Include="Themes\Stormcloud.xaml" />
+    <Resource Include="Themes\Deep Antarctic.xaml" />
+    <Resource Include="Themes\Druid.xaml" />
+    <Resource Include="Themes\Hoarfrost.xaml" />
+    <Resource Include="Themes\Coalglow.xaml" />
+    <Resource Include="Themes\Nocturnal K.xaml" />
+    <Resource Include="Themes\Graffity.xaml" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,21 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Graffity Theme -->
+    <SolidColorBrush x:Key="bg/widget" Color="#2F2633"/>
+    <SolidColorBrush x:Key="bg/task" Color="#221926"/>
+    <SolidColorBrush x:Key="bg/input" Color="#221926"/>
+    <SolidColorBrush x:Key="bg/checkbox-empty" Color="#433A47"/>
+    <SolidColorBrush x:Key="bg/checkbox-filled" Color="#C11310"/>
+    <SolidColorBrush x:Key="bg/button" Color="#C11310"/>
+    <SolidColorBrush x:Key="bg/soft" Color="#291F2D"/>
+    <SolidColorBrush x:Key="fg/primary" Color="#E2E2E2"/>
+    <SolidColorBrush x:Key="fg/secondary" Color="#76647E"/>
+    <SolidColorBrush x:Key="fg/danger" Color="#EF290F"/>
+    <SolidColorBrush x:Key="border/widget" Color="#342A38"/>
+    <SolidColorBrush x:Key="HeaderIconColor" Color="#76647E"/>
+    <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Inter</FontFamily>
+    <FontFamily x:Key="FontSemiBold">pack://application:,,,/Fonts/#Inter SemiBold</FontFamily>
+    <BitmapImage x:Key="WidgetBackgroundImage" UriSource="pack://application:,,,/Images/bg_graf.png"/>
+
+</ResourceDictionary>

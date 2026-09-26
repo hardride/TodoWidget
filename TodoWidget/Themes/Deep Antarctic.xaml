@@ -1,0 +1,24 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Deep Antarctic Theme -->
+    <LinearGradientBrush x:Key="bg/widget" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#163555" Offset="0"/>
+        <GradientStop Color="#0E1733" Offset="1"/>
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="bg/task" Color="#1B355A"/>
+    <SolidColorBrush x:Key="bg/input" Color="#1B355A"/>
+    <SolidColorBrush x:Key="bg/checkbox-empty" Color="#334266"/>
+    <SolidColorBrush x:Key="bg/checkbox-filled" Color="#F25B3B"/>
+    <SolidColorBrush x:Key="bg/button" Color="#F25B3B"/>
+    <SolidColorBrush x:Key="bg/soft" Color="#142944"/>
+    <SolidColorBrush x:Key="fg/primary" Color="#F2F8FF"/>
+    <SolidColorBrush x:Key="fg/secondary" Color="#636B84"/>
+    <SolidColorBrush x:Key="fg/danger" Color="#F03135"/>
+    <SolidColorBrush x:Key="border/widget" Color="#212C4A"/>
+    <SolidColorBrush x:Key="HeaderIconColor" Color="#636B84"/>
+    <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Inter</FontFamily>
+    <FontFamily x:Key="FontSemiBold">pack://application:,,,/Fonts/#Inter SemiBold</FontFamily>
+
+</ResourceDictionary>
