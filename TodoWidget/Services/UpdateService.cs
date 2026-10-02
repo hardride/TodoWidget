@@ -40,7 +40,14 @@ public class UpdateService
             var tag = doc.RootElement.GetProperty("tag_name").GetString();
             if (string.IsNullOrWhiteSpace(tag)) return;
 
-            var match = System.Text.RegularExpressions.Regex.Match(tag, @"\d+(\.\d+)+");
+            var tagClean = tag.TrimStart('v', 'V');
+            // Normalize legacy typo like "1.08" to "1.0.8" so System.Version doesn't treat 08 as minor 8
+            var matchLeadingZero = System.Text.RegularExpressions.Regex.Match(tagClean, @"^(\d+)\.0(\d+)(\..*)?$");
+            var versionString = matchLeadingZero.Success
+                ? $"{matchLeadingZero.Groups[1].Value}.0.{matchLeadingZero.Groups[2].Value}{matchLeadingZero.Groups[3].Value}"
+                : tagClean;
+
+            var match = System.Text.RegularExpressions.Regex.Match(versionString, @"\d+(\.\d+)+");
             if (!match.Success || !Version.TryParse(match.Value, out var latest)) return;
 
             var current = Assembly.GetEntryAssembly()?.GetName().Version;
@@ -49,8 +56,9 @@ public class UpdateService
             if (latest > current)
             {
                 var url = doc.RootElement.GetProperty("html_url").GetString();
+                var displayTag = tag.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? tag : $"v{tag}";
                 var result = MessageBox.Show(
-                    $"ADHD to-do обновился и теперь тебя ждёт v{latest}!\n\nОткрыть страницу загрузки?",
+                    $"ADHD to-do обновился и теперь тебя ждёт {displayTag}!\n\nОткрыть страницу загрузки?",
                     "Обновление доступно",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Information);

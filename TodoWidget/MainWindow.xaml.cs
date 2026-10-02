@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Hardcodet.Wpf.TaskbarNotification;
@@ -149,6 +150,22 @@ public partial class MainWindow : Window
                     AnimateScrollBars(false);
             };
         }
+
+        TasksScrollViewer.ScrollChanged += (s, e) =>
+        {
+            bool hasScroll = TasksScrollViewer.ComputedVerticalScrollBarVisibility == Visibility.Visible;
+            bool isHovered = IsMouseOver || MainBorder?.IsMouseOver == true;
+            IsScrollBarVisible = isHovered && hasScroll;
+        };
+    }
+
+    public static readonly DependencyProperty IsScrollBarVisibleProperty =
+        DependencyProperty.Register(nameof(IsScrollBarVisible), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
+
+    public bool IsScrollBarVisible
+    {
+        get => (bool)GetValue(IsScrollBarVisibleProperty);
+        set => SetValue(IsScrollBarVisibleProperty, value);
     }
 
     private void SetupDragVisuals()
@@ -257,6 +274,9 @@ public partial class MainWindow : Window
 
     private void AnimateScrollBars(bool visible)
     {
+        bool hasScroll = TasksScrollViewer?.ComputedVerticalScrollBarVisibility == Visibility.Visible;
+        IsScrollBarVisible = visible && hasScroll;
+
         double targetOpacity = visible ? 0.6 : 0.0;
         var duration = TimeSpan.FromMilliseconds(visible ? 250 : 350);
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
@@ -1292,8 +1312,11 @@ public partial class MainWindow : Window
                 }
 
                 // Update task's group
+                string? oldGroupId = _draggedItem.GroupDeadlineId;
                 _draggedItem.GroupDeadlineId = newGroupId;
                 _todoService.UpdateGroupDeadlineId(_draggedItem.Id, newGroupId);
+                bool joinedGroup = !string.IsNullOrEmpty(newGroupId);
+                string draggedId = _draggedItem.Id;
 
                 // Move task in active todos
                 Models.TodoItem? nextTask = null;
@@ -1366,6 +1389,10 @@ public partial class MainWindow : Window
                 _settings.DeadlineIds = lines.Select(x => x.id).ToList();
 
                 RefreshList();
+                if (joinedGroup)
+                {
+                    AnimateMagneticSnap(draggedId);
+                }
             }
         }
         CancelDrag();
@@ -2105,6 +2132,90 @@ public partial class MainWindow : Window
         _todoService.ReorderActiveTasks(active.Select(t => t.Id).ToList());
 
         RefreshList();
+        AnimateMagneticSnap(targetTodo.Id);
+    }
+
+    private void AnimateMagneticSnap(string todoId)
+    {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            try
+            {
+                TodoList.UpdateLayout();
+                Border? targetCard = null;
+                for (int i = 0; i < TodoList.Items.Count; i++)
+                {
+                    if (TodoList.Items[i] is Models.TodoItem item && item.Id == todoId)
+                    {
+                        var container = TodoList.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+                        if (container != null)
+                        {
+                            targetCard = (container is Border b && b.Name == "TaskCard") ? b : FindChildByName<Border>(container, "TaskCard");
+                        }
+                        break;
+                    }
+                }
+
+                if (targetCard == null) return;
+
+                var scale = new ScaleTransform(0.985, 0.985);
+                var translate = new TranslateTransform(0, -12);
+                var group = new TransformGroup();
+                group.Children.Add(scale);
+                group.Children.Add(translate);
+
+                targetCard.RenderTransformOrigin = new Point(0.5, 0.5);
+                targetCard.RenderTransform = group;
+
+                // Accent glow halo
+                var accentBrush = TryFindResource("fg/accent") as SolidColorBrush ?? Brushes.DodgerBlue;
+                var glow = new DropShadowEffect
+                {
+                    Color = accentBrush.Color,
+                    BlurRadius = 14,
+                    ShadowDepth = 0,
+                    Opacity = 0.0
+                };
+                targetCard.Effect = glow;
+
+                // 1. Snappy magnetic pull with slight overshoot (+2.5px), rebound (-0.8px), and lock (0px)
+                var transAnim = new DoubleAnimationUsingKeyFrames();
+                transAnim.KeyFrames.Add(new DiscreteDoubleKeyFrame(-12, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+                transAnim.KeyFrames.Add(new SplineDoubleKeyFrame(2.5, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)), new KeySpline(0.1, 0.9, 0.2, 1.0)));
+                transAnim.KeyFrames.Add(new SplineDoubleKeyFrame(-0.8, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(170)), new KeySpline(0.3, 0.0, 0.7, 1.0)));
+                transAnim.KeyFrames.Add(new SplineDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(220)), new KeySpline(0.2, 0.0, 0.5, 1.0)));
+
+                // 2. Micro tactile spring scale
+                var scaleAnim = new DoubleAnimationUsingKeyFrames();
+                scaleAnim.KeyFrames.Add(new DiscreteDoubleKeyFrame(0.985, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+                scaleAnim.KeyFrames.Add(new SplineDoubleKeyFrame(1.018, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)), new KeySpline(0.1, 0.9, 0.2, 1.0)));
+                scaleAnim.KeyFrames.Add(new SplineDoubleKeyFrame(0.995, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(170))));
+                scaleAnim.KeyFrames.Add(new SplineDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(220))));
+
+                // 3. Neon glow pulse at impact moment
+                var glowAnim = new DoubleAnimationUsingKeyFrames();
+                glowAnim.KeyFrames.Add(new DiscreteDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+                glowAnim.KeyFrames.Add(new SplineDoubleKeyFrame(0.85, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(110)), new KeySpline(0.1, 0.9, 0.2, 1.0)));
+                glowAnim.KeyFrames.Add(new SplineDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(260)), new KeySpline(0.4, 0.0, 1.0, 1.0)));
+
+                // 4. Smooth opacity
+                var opacityAnim = new DoubleAnimation(0.75, 1.0, TimeSpan.FromMilliseconds(100));
+
+                glowAnim.Completed += (s, e) =>
+                {
+                    targetCard.RenderTransform = Transform.Identity;
+                    targetCard.Effect = null;
+                    targetCard.Opacity = 1.0;
+                };
+
+                translate.BeginAnimation(TranslateTransform.YProperty, transAnim);
+                scale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnim);
+                scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnim);
+                glow.BeginAnimation(DropShadowEffect.OpacityProperty, glowAnim);
+                targetCard.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
+            }
+            catch { }
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private string? _editingDeadlineId;

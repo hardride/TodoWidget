@@ -12,7 +12,7 @@
     <SolidColorBrush x:Key="bg/soft" Color="#21262D"/>
     <SolidColorBrush x:Key="fg/primary" Color="#CDD4E0"/>
     <SolidColorBrush x:Key="fg/secondary" Color="#505A6C"/>
-    <SolidColorBrush x:Key="fg/danger" Color="#464F60"/>
+    <SolidColorBrush x:Key="fg/danger" Color="#E05858"/>
     <SolidColorBrush x:Key="border/widget" Color="#1D2229"/>
     <SolidColorBrush x:Key="HeaderIconColor" Color="#505A6C"/>
     <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Inter</FontFamily>
