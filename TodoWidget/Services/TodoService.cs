@@ -70,9 +70,49 @@ public class TodoService
         Save();
     }
 
+    public void UpdateTitle(string id, string newTitle)
+    {
+        var todo = _todos.FirstOrDefault(t => t.Id == id);
+        if (todo != null && !string.IsNullOrWhiteSpace(newTitle))
+        {
+            todo.Title = newTitle.Trim();
+            Save();
+        }
+    }
+
+    public void ClearCompleted()
+    {
+        _todos.RemoveAll(t => t.IsCompleted);
+        Save();
+    }
+
     public void Remove(string id)
     {
         _todos.RemoveAll(t => t.Id == id);
+        Save();
+    }
+
+    public void UpdateGroupDeadlineId(string id, string? groupDeadlineId)
+    {
+        var todo = _todos.FirstOrDefault(t => t.Id == id);
+        if (todo != null)
+        {
+            todo.GroupDeadlineId = groupDeadlineId;
+            Save();
+        }
+    }
+
+    public void ReorderActiveTasks(List<string> orderedActiveIds)
+    {
+        var completed = _todos.Where(t => t.IsCompleted).ToList();
+        var activeMap = _todos.Where(t => !t.IsCompleted).ToDictionary(t => t.Id);
+        _todos.Clear();
+        foreach (var id in orderedActiveIds)
+        {
+            if (activeMap.TryGetValue(id, out var item))
+                _todos.Add(item);
+        }
+        _todos.AddRange(completed);
         Save();
     }
 

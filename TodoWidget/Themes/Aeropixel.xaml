@@ -4,16 +4,17 @@
     <!-- Aeropixel Theme -->
     <SolidColorBrush x:Key="bg/widget" Color="#1B1B36"/>
     <SolidColorBrush x:Key="bg/task" Color="#2C2C4B"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#6A6A82"/>
     <SolidColorBrush x:Key="bg/input" Color="#2C2C4B"/>
     <SolidColorBrush x:Key="bg/checkbox-empty" Color="#464B65"/>
     <SolidColorBrush x:Key="bg/checkbox-filled" Color="#FE8949"/>
     <SolidColorBrush x:Key="bg/button" Color="#FE8949"/>
     <SolidColorBrush x:Key="bg/soft" Color="#232342"/>
     <SolidColorBrush x:Key="fg/primary" Color="#E2E2E2"/>
-    <SolidColorBrush x:Key="fg/secondary" Color="#797E82"/>
+    <SolidColorBrush x:Key="fg/secondary" Color="#6A6A82"/>
     <SolidColorBrush x:Key="fg/danger" Color="#EF0F0F"/>
     <SolidColorBrush x:Key="border/widget" Color="#24244A"/>
-    <SolidColorBrush x:Key="HeaderIconColor" Color="#607386"/>
+    <SolidColorBrush x:Key="HeaderIconColor" Color="#6A6A82"/>
     <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Inter</FontFamily>
     <FontFamily x:Key="FontSemiBold">pack://application:,,,/Fonts/#Inter SemiBold</FontFamily>
     <BitmapImage x:Key="WidgetBackgroundImage" UriSource="pack://application:,,,/Images/bg_aerop.png"/>

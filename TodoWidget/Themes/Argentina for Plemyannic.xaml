@@ -4,16 +4,19 @@
     <!-- Argentina for Plemyannic Theme -->
     <SolidColorBrush x:Key="bg/widget" Color="#F1E4DB"/>
     <SolidColorBrush x:Key="bg/task" Color="#F9F6F4"/>
-    <SolidColorBrush x:Key="fg/primary" Color="#121417"/>
-    <SolidColorBrush x:Key="fg/secondary" Color="#7C7F87"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#9F8776"/>
+    <SolidColorBrush x:Key="fg/primary" Color="#353943"/>
+    <SolidColorBrush x:Key="fg/secondary" Color="#A7968B"/>
     <SolidColorBrush x:Key="bg/checkbox-filled" Color="#1F64A9"/>
     <SolidColorBrush x:Key="bg/button" Color="#1F64A9"/>
     <SolidColorBrush x:Key="fg/danger" Color="#CF6969"/>
     <SolidColorBrush x:Key="bg/checkbox-empty" Color="#E4DDD8"/>
     <SolidColorBrush x:Key="bg/soft" Color="#E8DFD6"/>
     <SolidColorBrush x:Key="bg/input" Color="#F9F6F4"/>
-    <SolidColorBrush x:Key="border/widget" Color="#F1E4DB"/>
-    <SolidColorBrush x:Key="HeaderIconColor" Color="#7C7F87"/>
+    <SolidColorBrush x:Key="border/widget" Color="#D7CBC3"/>
+    <SolidColorBrush x:Key="HeaderIconColor" Color="#A7968B"/>
+    <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Inter</FontFamily>
+    <FontFamily x:Key="FontSemiBold">pack://application:,,,/Fonts/#Inter SemiBold</FontFamily>
     <BitmapImage x:Key="WidgetBackgroundImage" UriSource="pack://application:,,,/Images/bg_a.png"/>
 
 </ResourceDictionary>

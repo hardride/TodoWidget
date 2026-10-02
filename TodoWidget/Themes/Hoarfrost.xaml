@@ -2,14 +2,15 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- Hoarfrost Theme -->
-    <SolidColorBrush x:Key="bg/widget" Color="#CCD3E6"/>
-    <SolidColorBrush x:Key="bg/task" Color="#D9DFF0"/>
-    <SolidColorBrush x:Key="bg/input" Color="#D9DFF0"/>
-    <SolidColorBrush x:Key="bg/checkbox-empty" Color="#A5ADC2"/>
+    <SolidColorBrush x:Key="bg/widget" Color="#C8D2EE"/>
+    <SolidColorBrush x:Key="bg/task" Color="#E4E8F5"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#8690AE"/>
+    <SolidColorBrush x:Key="bg/input" Color="#E4E8F5"/>
+    <SolidColorBrush x:Key="bg/checkbox-empty" Color="#CDD4E5"/>
     <SolidColorBrush x:Key="bg/checkbox-filled" Color="#2B3656"/>
     <SolidColorBrush x:Key="bg/button" Color="#2B3656"/>
     <SolidColorBrush x:Key="bg/soft" Color="#D3D9EC"/>
-    <SolidColorBrush x:Key="fg/primary" Color="#2F4C91"/>
+    <SolidColorBrush x:Key="fg/primary" Color="#1C3163"/>
     <SolidColorBrush x:Key="fg/secondary" Color="#636B84"/>
     <SolidColorBrush x:Key="fg/danger" Color="#CE1418"/>
     <SolidColorBrush x:Key="border/widget" Color="#C9CFE2"/>

@@ -4,6 +4,7 @@
     <!-- Druid Theme -->
     <SolidColorBrush x:Key="bg/widget" Color="#1A1E24"/>
     <SolidColorBrush x:Key="bg/task" Color="#252930"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#4E5B6F"/>
     <SolidColorBrush x:Key="bg/input" Color="#252930"/>
     <SolidColorBrush x:Key="bg/checkbox-empty" Color="#1A1F27"/>
     <SolidColorBrush x:Key="bg/checkbox-filled" Color="#40B1A4"/>

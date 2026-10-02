@@ -7,9 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Images\icon.ico</ApplicationIcon>
-    <Version>1.0.7</Version>
-    <AssemblyVersion>1.0.7.0</AssemblyVersion>
-    <FileVersion>1.0.7.0</FileVersion>
+    <Version>1.08</Version>
+    <AssemblyVersion>1.0.8.0</AssemblyVersion>
+    <FileVersion>1.0.8.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -41,6 +41,8 @@
     <Resource Include="Themes\Hoarfrost.xaml" />
     <Resource Include="Themes\Coalglow.xaml" />
     <Resource Include="Themes\Nocturnal K.xaml" />
+    <Resource Include="Images\bg_engr.png" />
+    <Resource Include="Themes\Engraving K.xaml" />
     <Resource Include="Themes\Graffity.xaml" />
   </ItemGroup>
 

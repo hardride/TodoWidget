@@ -4,6 +4,7 @@
     <!-- Coalglow Theme -->
     <SolidColorBrush x:Key="bg/widget" Color="#1A1E24"/>
     <SolidColorBrush x:Key="bg/task" Color="#282D35"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#505A6C"/>
     <SolidColorBrush x:Key="bg/input" Color="#282D35"/>
     <SolidColorBrush x:Key="bg/checkbox-empty" Color="#464F60"/>
     <SolidColorBrush x:Key="bg/checkbox-filled" Color="#E05858"/>

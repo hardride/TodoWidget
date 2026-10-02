@@ -1,8 +1,11 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using Hardcodet.Wpf.TaskbarNotification;
 using TodoWidget.Services;
 
@@ -24,6 +27,7 @@ public partial class MainWindow : Window
     private TextBlock? _dragGhostText;
     private System.Windows.Threading.DispatcherTimer? _urgentTimer;
     private DateTime? _urgentStartTime;
+    private System.Windows.Threading.DispatcherTimer? _deadlineCountdownTimer;
 
     public static SolidColorBrush CalculateHoverBrush(SolidColorBrush? baseBrush)
     {
@@ -48,6 +52,12 @@ public partial class MainWindow : Window
         Application.Current.Resources["bg/checkbox-empty/hover"] = CalculateHoverBrush(emptyBrush);
         Application.Current.Resources["bg/checkbox-filled/hover"] = CalculateHoverBrush(filledBrush);
         Application.Current.Resources["bg/button/hover"] = CalculateHoverBrush(buttonBrush);
+
+        var accentBrush = (Application.Current.TryFindResource("fg/accent") as SolidColorBrush)
+                          ?? buttonBrush
+                          ?? filledBrush
+                          ?? new SolidColorBrush(Color.FromRgb(31, 100, 169));
+        Application.Current.Resources["fg/accent"] = accentBrush;
     }
 
     public MainWindow()
@@ -60,7 +70,7 @@ public partial class MainWindow : Window
             savedTheme = "Amber";
         if (savedTheme == "K in the night")
             savedTheme = "Nocturnal K";
-        var validThemes = new[] { "Dark", "Light", "Kanagawa", "Argentina for Plemyannic", "Terminal", "Amber", "Pixel-76", "Aeropixel", "Syntwave", "Stormcloud", "Deep Antarctic", "Druid", "Hoarfrost", "Coalglow", "Nocturnal K", "Graffity" };
+        var validThemes = new[] { "Dark", "Light", "Kanagawa", "Argentina for Plemyannic", "Terminal", "Amber", "Pixel-76", "Aeropixel", "Syntwave", "Stormcloud", "Deep Antarctic", "Druid", "Hoarfrost", "Coalglow", "Nocturnal K", "Engraving K", "Graffity" };
         if (!validThemes.Contains(savedTheme))
             savedTheme = "Dark";
 
@@ -117,6 +127,28 @@ public partial class MainWindow : Window
             if (e.ChangedButton == MouseButton.Left)
                 DragMove();
         };
+
+        MouseEnter += (s, e) => AnimateScrollBars(true);
+        MouseLeave += (s, e) =>
+        {
+            if (Mouse.Captured == null)
+                AnimateScrollBars(false);
+        };
+        PreviewMouseUp += (s, e) =>
+        {
+            if (!IsMouseOver && MainBorder?.IsMouseOver != true)
+                AnimateScrollBars(false);
+        };
+
+        if (MainBorder != null)
+        {
+            MainBorder.MouseEnter += (s, e) => AnimateScrollBars(true);
+            MainBorder.MouseLeave += (s, e) =>
+            {
+                if (Mouse.Captured == null)
+                    AnimateScrollBars(false);
+            };
+        }
     }
 
     private void SetupDragVisuals()
@@ -151,6 +183,7 @@ public partial class MainWindow : Window
             AllowsTransparency = true,
             Background = Brushes.Transparent,
             ShowInTaskbar = false,
+            ShowActivated = false,
             Topmost = true,
             IsHitTestVisible = false,
             Content = ghostBorder,
@@ -222,9 +255,63 @@ public partial class MainWindow : Window
         _trayIcon.TrayMouseDoubleClick += (s, e) => RestoreWidget();
     }
 
+    private void AnimateScrollBars(bool visible)
+    {
+        double targetOpacity = visible ? 0.6 : 0.0;
+        var duration = TimeSpan.FromMilliseconds(visible ? 250 : 350);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+        AnimateScrollBar(TasksScrollViewer, targetOpacity, duration, ease);
+        AnimateScrollBar(ThemesScrollViewer, targetOpacity, duration, ease);
+    }
+
+    private void AnimateScrollBar(ScrollViewer? scrollViewer, double targetOpacity, TimeSpan duration, IEasingFunction ease)
+    {
+        if (scrollViewer == null) return;
+        scrollViewer.ApplyTemplate();
+        var sb = (scrollViewer.Template?.FindName("PART_VerticalScrollBar", scrollViewer) as ScrollBar)
+                 ?? FindChildByName<ScrollBar>(scrollViewer, "PART_VerticalScrollBar");
+        if (sb != null)
+        {
+            if (sb.Tag == null)
+            {
+                sb.Tag = "Initialized";
+                sb.MouseEnter += (s, e) =>
+                {
+                    var a = new DoubleAnimation(0.9, TimeSpan.FromMilliseconds(150)) { EasingFunction = ease };
+                    sb.BeginAnimation(UIElement.OpacityProperty, a);
+                };
+                sb.MouseLeave += (s, e) =>
+                {
+                    if (IsMouseOver || MainBorder?.IsMouseOver == true)
+                    {
+                        var a = new DoubleAnimation(0.6, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease };
+                        sb.BeginAnimation(UIElement.OpacityProperty, a);
+                    }
+                };
+            }
+
+            var anim = new DoubleAnimation(targetOpacity, duration) { EasingFunction = ease };
+            sb.BeginAnimation(UIElement.OpacityProperty, anim);
+        }
+    }
+
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        MaxHeight = Math.Max(600, SystemParameters.WorkArea.Height - 40);
+        if (_settings.Height >= MinHeight)
+        {
+            Height = Math.Min(_settings.Height, MaxHeight);
+        }
         NewTaskInput.Focus();
+
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (IsMouseOver || MainBorder?.IsMouseOver == true)
+            {
+                AnimateScrollBars(true);
+            }
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void MainWindow_Activated(object? sender, EventArgs e)
@@ -232,11 +319,18 @@ public partial class MainWindow : Window
         double activeOpacity = OpacitySlider?.Value ?? 1.0;
         if (MainBorder != null) MainBorder.Opacity = activeOpacity;
         if (OutlineBorder != null) OutlineBorder.Opacity = activeOpacity;
+
+        if (IsMouseOver || MainBorder?.IsMouseOver == true)
+        {
+            AnimateScrollBars(true);
+        }
     }
 
     private void MainWindow_Deactivated(object? sender, EventArgs e)
     {
-        if (MainBorder != null && !_isDragging)
+        AnimateScrollBars(false);
+
+        if (MainBorder != null && !_isDragging && !_isDraggingDeadline)
         {
             double baseOpacity = OpacitySlider?.Value ?? 1.0;
             double inactiveOpacity = Math.Max(0.15, baseOpacity * 0.4);
@@ -255,6 +349,7 @@ public partial class MainWindow : Window
     {
         _trayIcon?.Dispose();
         _tile?.Close();
+        _deadlineCountdownTimer?.Stop();
     }
 
     // === Theme ===
@@ -297,6 +392,10 @@ public partial class MainWindow : Window
         }
 
         UpdateHeaderIcons();
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            AnimateScrollBars(IsMouseOver || MainBorder?.IsMouseOver == true);
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void DarkTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Dark");
@@ -313,6 +412,7 @@ public partial class MainWindow : Window
     private void HoarfrostTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Hoarfrost");
     private void CoalglowTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Coalglow");
     private void NocturnalKTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Nocturnal K");
+    private void EngravingKTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Engraving K");
     private void GraffityTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Graffity");
 
     private void ApplyTheme(string theme)
@@ -359,6 +459,7 @@ public partial class MainWindow : Window
             "Aeropixel" => "bg_aerop.png",
             "Pixel-76" => "bg_aerop.png",
             "Nocturnal K" => "bg_best.png",
+            "Engraving K" => "bg_engr.png",
             "Graffity" => "bg_graf.png",
             _ => null
         };
@@ -400,6 +501,7 @@ public partial class MainWindow : Window
         if (HoarfrostCheck != null) HoarfrostCheck.Opacity = _currentTheme == "Hoarfrost" ? 1 : 0;
         if (CoalglowCheck != null) CoalglowCheck.Opacity = _currentTheme == "Coalglow" ? 1 : 0;
         if (NocturnalKCheck != null) NocturnalKCheck.Opacity = _currentTheme == "Nocturnal K" ? 1 : 0;
+        if (EngravingKCheck != null) EngravingKCheck.Opacity = _currentTheme == "Engraving K" ? 1 : 0;
         if (GraffityCheck != null) GraffityCheck.Opacity = _currentTheme == "Graffity" ? 1 : 0;
     }
 
@@ -504,6 +606,11 @@ public partial class MainWindow : Window
         }
 
         UpdateHeaderIcons();
+        StartDeadlineTimerIfNeeded();
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            AnimateScrollBars(IsMouseOver || MainBorder?.IsMouseOver == true);
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void ShowMenuItem_Click(object sender, RoutedEventArgs e) => RestoreWidget();
@@ -557,7 +664,8 @@ public partial class MainWindow : Window
     {
         if (TodoList.Items.Count == 0) return;
 
-        var lastItem = TodoList.Items[^1];
+        var lastItem = TodoList.Items.OfType<Models.TodoItem>().LastOrDefault();
+        if (lastItem == null) return;
 
         Dispatcher.BeginInvoke(new Action(() =>
         {
@@ -607,15 +715,18 @@ public partial class MainWindow : Window
     {
         if (sender is CheckBox checkbox && checkbox.Tag is string id)
         {
-            var itemBefore = _todoService.GetAll().FirstOrDefault(t => t.Id == id);
+            var allBefore = _todoService.GetAll();
+            var itemBefore = allBefore.FirstOrDefault(t => t.Id == id);
             bool wasUrgent = itemBefore?.IsUrgent == true;
             bool wasCompleted = itemBefore?.IsCompleted == true;
+            int taskIndex = allBefore.Where(t => !t.IsCompleted).ToList().FindIndex(t => t.Id == id);
 
             if (wasCompleted)
             {
                 // Unchecking a completed task: return it to active list immediately
                 _todoService.Toggle(id);
                 _todoService.MoveToTop(id);
+                OnActiveTaskAddedToTop();
                 RefreshList();
                 return;
             }
@@ -663,6 +774,10 @@ public partial class MainWindow : Window
                     if (finished) return;
                     finished = true;
 
+                    if (taskIndex >= 0)
+                    {
+                        OnActiveTaskRemoved(taskIndex);
+                    }
                     _todoService.Toggle(id);
                     _todoService.MoveToTop(id);
 
@@ -732,6 +847,10 @@ public partial class MainWindow : Window
             }
             else
             {
+                if (taskIndex >= 0)
+                {
+                    OnActiveTaskRemoved(taskIndex);
+                }
                 _todoService.Toggle(id);
                 _todoService.MoveToTop(id);
 
@@ -750,6 +869,11 @@ public partial class MainWindow : Window
         e.Handled = true;
         if (sender is TextBlock textBlock && textBlock.Tag is string id)
         {
+            var allBefore = _todoService.GetAll();
+            var itemBefore = allBefore.FirstOrDefault(t => t.Id == id);
+            string? dlGroupId = itemBefore?.GroupDeadlineId;
+            int taskIndex = allBefore.Where(t => !t.IsCompleted).ToList().FindIndex(t => t.Id == id);
+
             var card = FindAncestorOrSelf<Border>(textBlock);
             if (card != null)
             {
@@ -760,6 +884,18 @@ public partial class MainWindow : Window
                 {
                     if (removed) return;
                     removed = true;
+                    if (taskIndex >= 0)
+                    {
+                        OnActiveTaskRemoved(taskIndex);
+                    }
+                    if (!string.IsNullOrEmpty(dlGroupId))
+                    {
+                        bool wasLastInGroup = allBefore.Count(t => t.Id != id && t.GroupDeadlineId == dlGroupId) == 0;
+                        if (wasLastInGroup)
+                        {
+                            RemoveDeadlineById(dlGroupId);
+                        }
+                    }
                     _todoService.Remove(id);
                     if (_isUrgentMode)
                     {
@@ -825,6 +961,18 @@ public partial class MainWindow : Window
             }
             else
             {
+                if (taskIndex >= 0)
+                {
+                    OnActiveTaskRemoved(taskIndex);
+                }
+                if (!string.IsNullOrEmpty(dlGroupId))
+                {
+                    bool wasLastInGroup = allBefore.Count(t => t.Id != id && t.GroupDeadlineId == dlGroupId) == 0;
+                    if (wasLastInGroup)
+                    {
+                        RemoveDeadlineById(dlGroupId);
+                    }
+                }
                 _todoService.Remove(id);
                 if (_isUrgentMode)
                 {
@@ -888,15 +1036,18 @@ public partial class MainWindow : Window
         return null;
     }
 
+    private string? _editingTaskId;
+
     private void TaskBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         var dep = e.OriginalSource as DependencyObject;
         if (dep != null)
         {
-            // Do not initiate drag if user clicked CheckBox, FireBorder (Urgent), or Delete (✕)
+            // Do not initiate drag or edit if user clicked CheckBox, FireBorder (Urgent), Delete (✕), or inside TextBox
             if (FindAncestorOrSelf<CheckBox>(dep) != null) return;
             if (FindAncestorByName(dep, "FireBorder") != null) return;
             if (dep is TextBlock tb && tb.Tag != null) return;
+            if (FindAncestorOrSelf<TextBox>(dep) != null) return;
         }
 
         if (sender is Border border)
@@ -904,11 +1055,77 @@ public partial class MainWindow : Window
             var item = border.DataContext as Models.TodoItem;
             if (item == null || item.IsCompleted) return;
 
+            if (e.ClickCount == 2)
+            {
+                CancelDrag();
+                BeginEditTask(border, item);
+                e.Handled = true;
+                return;
+            }
+
             _draggedItem = item;
             _draggedBorder = border;
             _dragStartPoint = e.GetPosition(this);
             _isDragging = false;
         }
+    }
+
+    private void BeginEditTask(Border card, Models.TodoItem item)
+    {
+        var titleText = FindChildByName<TextBlock>(card, "TaskTitleText");
+        var editBox = FindChildByName<TextBox>(card, "TaskEditBox");
+        if (titleText == null || editBox == null) return;
+
+        _editingTaskId = item.Id;
+        titleText.Visibility = Visibility.Collapsed;
+        editBox.Text = item.Title;
+        editBox.Visibility = Visibility.Visible;
+        editBox.Focus();
+        editBox.SelectAll();
+    }
+
+    private void TaskEditBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.DataContext is Models.TodoItem item)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                CommitEditTask(textBox, item);
+            }
+            else if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                CancelEditTask();
+            }
+        }
+    }
+
+    private void TaskEditBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.DataContext is Models.TodoItem item)
+        {
+            CommitEditTask(textBox, item);
+        }
+    }
+
+    private void CommitEditTask(TextBox textBox, Models.TodoItem item)
+    {
+        if (_editingTaskId == null || _editingTaskId != item.Id) return;
+        _editingTaskId = null;
+
+        var newTitle = textBox.Text?.Trim();
+        if (!string.IsNullOrWhiteSpace(newTitle) && newTitle != item.Title)
+        {
+            _todoService.UpdateTitle(item.Id, newTitle);
+        }
+        RefreshList();
+    }
+
+    private void CancelEditTask()
+    {
+        _editingTaskId = null;
+        RefreshList();
     }
 
     private void TaskBorder_MouseMove(object sender, MouseEventArgs e)
@@ -1019,7 +1236,7 @@ public partial class MainWindow : Window
 
     private void TaskBorder_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (_isDragging && _draggedItem != null && _dropTargetSlot >= 0)
+        if (_isDragging && _draggedItem != null)
         {
             int M = TodoList.Items.Count;
             int draggedIndex = -1;
@@ -1031,18 +1248,123 @@ public partial class MainWindow : Window
                     break;
                 }
             }
-            if (draggedIndex >= 0 && _dropTargetSlot != draggedIndex && _dropTargetSlot != draggedIndex + 1)
+
+            if (draggedIndex >= 0 && _dropTargetSlot >= 0 && _dropTargetSlot != draggedIndex && _dropTargetSlot != draggedIndex + 1)
             {
-                if (_dropTargetSlot < draggedIndex)
+                // Build otherItems (TodoList.Items excluding the dragged task)
+                var otherItems = new List<object>();
+                for (int i = 0; i < M; i++)
                 {
-                    if (TodoList.Items[_dropTargetSlot] is Models.TodoItem targetItem)
-                        _todoService.MoveBefore(_draggedItem.Id, targetItem.Id);
+                    if (i != draggedIndex) otherItems.Add(TodoList.Items[i]);
+                }
+
+                int insertIdx = (_dropTargetSlot <= draggedIndex) ? _dropTargetSlot : _dropTargetSlot - 1;
+                var itemBefore = (insertIdx > 0 && insertIdx - 1 < otherItems.Count) ? otherItems[insertIdx - 1] : null;
+                var itemAfter = (insertIdx >= 0 && insertIdx < otherItems.Count) ? otherItems[insertIdx] : null;
+
+                // Determine newGroupId
+                string? newGroupId = null;
+
+                if (itemBefore is Models.DeadlineItem dlBefore)
+                {
+                    // Dropped right under a deadline line
+                    if (itemAfter is Models.TodoItem tAfter && tAfter.GroupDeadlineId == dlBefore.Id)
+                    {
+                        newGroupId = dlBefore.Id;
+                    }
+                    else if (dlBefore.HasGroupedTasks)
+                    {
+                        newGroupId = dlBefore.Id;
+                    }
+                }
+                else if (itemBefore is Models.TodoItem tBefore && !string.IsNullOrEmpty(tBefore.GroupDeadlineId))
+                {
+                    if (itemAfter is Models.TodoItem tAfter && tAfter.GroupDeadlineId == tBefore.GroupDeadlineId)
+                    {
+                        // Inside another or same group (Variant A: auto-absorption / same group reorder)
+                        newGroupId = tBefore.GroupDeadlineId;
+                    }
+                    else if (!string.IsNullOrEmpty(_draggedItem.GroupDeadlineId) && _draggedItem.GroupDeadlineId == tBefore.GroupDeadlineId)
+                    {
+                        // Moving to the end of its own group
+                        newGroupId = _draggedItem.GroupDeadlineId;
+                    }
+                }
+
+                // Update task's group
+                _draggedItem.GroupDeadlineId = newGroupId;
+                _todoService.UpdateGroupDeadlineId(_draggedItem.Id, newGroupId);
+
+                // Move task in active todos
+                Models.TodoItem? nextTask = null;
+                for (int i = insertIdx; i < otherItems.Count; i++)
+                {
+                    if (otherItems[i] is Models.TodoItem t)
+                    {
+                        nextTask = t;
+                        break;
+                    }
+                }
+
+                if (nextTask != null)
+                {
+                    _todoService.MoveBefore(_draggedItem.Id, nextTask.Id);
                 }
                 else
                 {
-                    if (TodoList.Items[_dropTargetSlot - 1] is Models.TodoItem prevItem)
-                        _todoService.MoveAfter(_draggedItem.Id, prevItem.Id);
+                    Models.TodoItem? prevTask = null;
+                    for (int i = insertIdx - 1; i >= 0; i--)
+                    {
+                        if (otherItems[i] is Models.TodoItem t)
+                        {
+                            prevTask = t;
+                            break;
+                        }
+                    }
+                    if (prevTask != null)
+                    {
+                        _todoService.MoveAfter(_draggedItem.Id, prevTask.Id);
+                    }
                 }
+
+                // Update deadline slots based on new visual list order
+                var slots = _settings.DeadlineSlots;
+                var newSlots = new List<int>();
+                for (int s = 0; s < slots.Count; s++)
+                {
+                    string dlId = _settings.GetDeadlineId(s);
+                    int dlIdxInOther = otherItems.FindIndex(it => it is Models.DeadlineItem dl && dl.Id == dlId);
+                    if (dlIdxInOther >= 0)
+                    {
+                        int countTasksBefore = 0;
+                        for (int k = 0; k < dlIdxInOther; k++)
+                        {
+                            if (otherItems[k] is Models.TodoItem) countTasksBefore++;
+                        }
+                        if (insertIdx <= dlIdxInOther) countTasksBefore++;
+                        newSlots.Add(countTasksBefore);
+                    }
+                    else
+                    {
+                        newSlots.Add(slots[s]);
+                    }
+                }
+
+                var lines = new List<(int slot, int originalIndex, string label, string? timerEnd, string id)>();
+                for (int s = 0; s < slots.Count; s++)
+                {
+                    string id = _settings.GetDeadlineId(s);
+                    string label = _settings.GetDeadlineLabel(s);
+                    string? timerEnd = (s < _settings.DeadlineTimerEnds.Count) ? _settings.DeadlineTimerEnds[s] : null;
+                    lines.Add((newSlots[s], s, label, timerEnd, id));
+                }
+                lines.Sort((a, b) => a.slot != b.slot ? a.slot.CompareTo(b.slot) : a.originalIndex.CompareTo(b.originalIndex));
+
+                _settings.DeadlineSlots = lines.Select(x => x.slot).ToList();
+                _settings.DeadlineLabels = lines.Select(x => x.label).ToList();
+                _settings.DeadlineTimerEnds = lines.Select(x => x.timerEnd).ToList();
+                _settings.DeadlineIds = lines.Select(x => x.id).ToList();
+
                 RefreshList();
             }
         }
@@ -1062,6 +1384,1039 @@ public partial class MainWindow : Window
         _isDragging = false;
         _draggedItem = null;
         _draggedBorder = null;
+    }
+
+    // === Deadline Line Drag & Drop ===
+    private bool _isDraggingDeadline;
+    private Border? _draggedDeadlineBorder;
+    private Models.DeadlineItem? _draggedDeadlineItem;
+    private Point _deadlineDragStartPoint;
+    private int _deadlineDropTargetSlot = -1;
+
+    private void Deadline_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject dep)
+        {
+            if (FindAncestorByName(dep, "AddLineBtn") != null || FindAncestorByName(dep, "DeleteLineBtn") != null || FindAncestorByName(dep, "DeadlineTargetBtn") != null)
+            {
+                return;
+            }
+            if (FindAncestorOrSelf<TextBox>(dep) != null)
+            {
+                return;
+            }
+        }
+
+        if (sender is Border border)
+        {
+            var item = border.DataContext as Models.DeadlineItem;
+            if (e.ClickCount == 2)
+            {
+                CancelDeadlineDrag();
+                BeginEditDeadline(border, item);
+                e.Handled = true;
+                return;
+            }
+
+            _draggedDeadlineBorder = border;
+            _draggedDeadlineItem = item;
+            _deadlineDragStartPoint = e.GetPosition(this);
+            _isDraggingDeadline = false;
+        }
+    }
+
+    private void SetGroupedTasksDragOpacity(string? deadlineId, double opacity)
+    {
+        if (TodoList == null || string.IsNullOrEmpty(deadlineId)) return;
+        for (int i = 0; i < TodoList.Items.Count; i++)
+        {
+            if (TodoList.Items[i] is Models.TodoItem t && t.GroupDeadlineId == deadlineId)
+            {
+                var container = TodoList.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+                if (container != null)
+                {
+                    var card = (container is Border b && b.Name == "TaskCard") ? b : FindChildByName<Border>(container, "TaskCard") ?? container;
+                    card.Opacity = opacity;
+                }
+            }
+        }
+    }
+
+    private void Deadline_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_draggedDeadlineBorder == null) return;
+        if (e.LeftButton != MouseButtonState.Pressed)
+        {
+            CancelDeadlineDrag();
+            return;
+        }
+
+        var currentPos = e.GetPosition(this);
+        double dy = Math.Abs(currentPos.Y - _deadlineDragStartPoint.Y);
+        if (!_isDraggingDeadline && dy > 4)
+        {
+            _isDraggingDeadline = true;
+            _draggedDeadlineBorder.Opacity = 0.35;
+            _draggedDeadlineBorder.CaptureMouse();
+            if (_draggedDeadlineItem != null)
+            {
+                SetGroupedTasksDragOpacity(_draggedDeadlineItem.Id, 0.35);
+            }
+        }
+
+        if (_isDraggingDeadline)
+        {
+            int groupedCount = _todoService.GetAll().Count(t => !t.IsCompleted && t.GroupDeadlineId == _draggedDeadlineItem?.Id);
+            string ghostText = (groupedCount > 0)
+                ? $"{_draggedDeadlineItem?.FullDisplayText} (+{groupedCount})"
+                : (_draggedDeadlineItem?.FullDisplayText ?? "title");
+            ShowDragGhost(ghostText, currentPos);
+            UpdateDeadlineDropSlot(e);
+        }
+    }
+
+    private class DropBlock
+    {
+        public double Top { get; set; }
+        public double Bottom { get; set; }
+        public double Mid => (Top + Bottom) / 2.0;
+        public int ActiveTaskCount { get; set; }
+        public string? GroupDeadlineId { get; set; }
+    }
+
+    private void UpdateDeadlineDropSlot(MouseEventArgs e)
+    {
+        if (DropIndicator == null || DropIndicatorTransform == null) return;
+
+        string? draggedDlId = _draggedDeadlineItem?.Id;
+        var blocks = new List<DropBlock>();
+        DropBlock? currentGroupBlock = null;
+
+        for (int i = 0; i < TodoList.Items.Count; i++)
+        {
+            var item = TodoList.Items[i];
+            var container = TodoList.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+            if (container == null) continue;
+
+            if (item is Models.DeadlineItem dlItem)
+            {
+                if (dlItem.Id == draggedDlId)
+                {
+                    currentGroupBlock = null;
+                    continue;
+                }
+
+                var dlCard = (container is Border b && b.Name == "DeadlineContainer") ? b : FindChildByName<Border>(container, "DeadlineContainer") ?? container;
+                var topPt = dlCard.TransformToAncestor(TodoListGrid).Transform(new Point(0, 0));
+                double top = topPt.Y;
+                double bot = top + dlCard.ActualHeight;
+
+                if (dlItem.HasGroupedTasks)
+                {
+                    currentGroupBlock = new DropBlock
+                    {
+                        Top = top,
+                        Bottom = bot,
+                        ActiveTaskCount = 0,
+                        GroupDeadlineId = dlItem.Id
+                    };
+                    blocks.Add(currentGroupBlock);
+                }
+                else
+                {
+                    currentGroupBlock = null;
+                    blocks.Add(new DropBlock
+                    {
+                        Top = top,
+                        Bottom = bot,
+                        ActiveTaskCount = 0,
+                        GroupDeadlineId = null
+                    });
+                }
+            }
+            else if (item is Models.TodoItem tItem)
+            {
+                if (!string.IsNullOrEmpty(draggedDlId) && tItem.GroupDeadlineId == draggedDlId)
+                {
+                    continue;
+                }
+
+                var card = (container is Border b && b.Name == "TaskCard") ? b : FindChildByName<Border>(container, "TaskCard") ?? container;
+                var topPt = card.TransformToAncestor(TodoListGrid).Transform(new Point(0, 0));
+                double top = topPt.Y;
+                double bot = top + card.ActualHeight;
+
+                if (currentGroupBlock != null && tItem.GroupDeadlineId == currentGroupBlock.GroupDeadlineId)
+                {
+                    currentGroupBlock.Bottom = Math.Max(currentGroupBlock.Bottom, bot);
+                    currentGroupBlock.ActiveTaskCount++;
+                }
+                else
+                {
+                    currentGroupBlock = null;
+                    blocks.Add(new DropBlock
+                    {
+                        Top = top,
+                        Bottom = bot,
+                        ActiveTaskCount = 1,
+                        GroupDeadlineId = null
+                    });
+                }
+            }
+        }
+
+        if (blocks.Count == 0)
+        {
+            DropIndicator.Visibility = Visibility.Collapsed;
+            _deadlineDropTargetSlot = 0;
+            return;
+        }
+
+        double mouseY = e.GetPosition(TodoListGrid).Y;
+        int blockSlot = 0;
+        if (mouseY < blocks[0].Mid)
+        {
+            blockSlot = 0;
+        }
+        else if (mouseY >= blocks[^1].Mid)
+        {
+            blockSlot = blocks.Count;
+        }
+        else
+        {
+            for (int i = 0; i < blocks.Count - 1; i++)
+            {
+                if (mouseY >= blocks[i].Mid && mouseY < blocks[i + 1].Mid)
+                {
+                    blockSlot = i + 1;
+                    break;
+                }
+            }
+        }
+
+        int targetActiveSlot = 0;
+        for (int i = 0; i < blockSlot; i++)
+        {
+            targetActiveSlot += blocks[i].ActiveTaskCount;
+        }
+
+        _deadlineDropTargetSlot = targetActiveSlot;
+
+        double lineY = (blockSlot == 0)
+            ? blocks[0].Top - 3
+            : (blockSlot == blocks.Count)
+                ? blocks[^1].Bottom + 2
+                : (blocks[blockSlot - 1].Bottom + blocks[blockSlot].Top) / 2.0 - 0.5;
+
+        DropIndicatorTransform.Y = Math.Max(0, lineY);
+        DropIndicator.Visibility = Visibility.Visible;
+    }
+
+    private void Deadline_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_isDraggingDeadline && _deadlineDropTargetSlot >= 0 && _draggedDeadlineItem != null)
+        {
+            var dl = _draggedDeadlineItem;
+            int lineIdx = dl.LineIndex;
+            var slots = _settings.DeadlineSlots;
+
+            if (lineIdx >= 0 && lineIdx < slots.Count)
+            {
+                var activeTodos = _todoService.GetAll().Where(t => !t.IsCompleted).ToList();
+                var groupedTasks = activeTodos.Where(t => t.GroupDeadlineId == dl.Id).ToList();
+
+                if (groupedTasks.Count > 0)
+                {
+                    var otherActive = activeTodos.Where(t => t.GroupDeadlineId != dl.Id).ToList();
+                    int targetOtherSlot = Math.Clamp(_deadlineDropTargetSlot, 0, otherActive.Count);
+
+                    var newActive = new List<Models.TodoItem>();
+                    newActive.AddRange(otherActive.Take(targetOtherSlot));
+                    newActive.AddRange(groupedTasks);
+                    newActive.AddRange(otherActive.Skip(targetOtherSlot));
+
+                    _todoService.ReorderActiveTasks(newActive.Select(t => t.Id).ToList());
+
+                    var lines = new List<(int slot, double sortKey, string label, string? timerEnd, string id)>();
+                    for (int i = 0; i < slots.Count; i++)
+                    {
+                        string id = _settings.GetDeadlineId(i);
+                        string label = _settings.GetDeadlineLabel(i);
+                        string? timerEnd = (i < _settings.DeadlineTimerEnds.Count) ? _settings.DeadlineTimerEnds[i] : null;
+
+                        if (i == lineIdx)
+                        {
+                            lines.Add((targetOtherSlot, targetOtherSlot, label, timerEnd, id));
+                        }
+                        else
+                        {
+                            int oldSlot = slots[i];
+                            if (oldSlot >= activeTodos.Count)
+                            {
+                                lines.Add((newActive.Count, newActive.Count + 0.5, label, timerEnd, id));
+                            }
+                            else
+                            {
+                                var taskAfter = activeTodos[oldSlot];
+                                int newSlot = newActive.IndexOf(taskAfter);
+                                if (newSlot < 0) newSlot = oldSlot;
+                                double sortKey = newSlot + (i < lineIdx ? -0.1 : 0.1);
+                                lines.Add((newSlot, sortKey, label, timerEnd, id));
+                            }
+                        }
+                    }
+                    lines.Sort((a, b) => a.sortKey.CompareTo(b.sortKey));
+
+                    _settings.DeadlineSlots = lines.Select(x => x.slot).ToList();
+                    _settings.DeadlineLabels = lines.Select(x => x.label).ToList();
+                    _settings.DeadlineTimerEnds = lines.Select(x => x.timerEnd).ToList();
+                    _settings.DeadlineIds = lines.Select(x => x.id).ToList();
+                }
+                else
+                {
+                    int targetSlot = Math.Clamp(_deadlineDropTargetSlot, 0, activeTodos.Count);
+                    var lines = new List<(int slot, double sortKey, string label, string? timerEnd, string id)>();
+                    for (int i = 0; i < slots.Count; i++)
+                    {
+                        int s = (i == lineIdx) ? targetSlot : slots[i];
+                        string l = _settings.GetDeadlineLabel(i);
+                        string? t = (i < _settings.DeadlineTimerEnds.Count) ? _settings.DeadlineTimerEnds[i] : null;
+                        string id = _settings.GetDeadlineId(i);
+                        double sortKey = s + (i == lineIdx ? 0.0 : (i < lineIdx ? -0.1 : 0.1));
+                        lines.Add((s, sortKey, l, t, id));
+                    }
+                    lines.Sort((a, b) => a.sortKey.CompareTo(b.sortKey));
+
+                    _settings.DeadlineSlots = lines.Select(x => x.slot).ToList();
+                    _settings.DeadlineLabels = lines.Select(x => x.label).ToList();
+                    _settings.DeadlineTimerEnds = lines.Select(x => x.timerEnd).ToList();
+                    _settings.DeadlineIds = lines.Select(x => x.id).ToList();
+                }
+            }
+
+            CancelDeadlineDrag();
+            RefreshList();
+        }
+        else
+        {
+            CancelDeadlineDrag();
+        }
+    }
+
+    private void CancelDeadlineDrag()
+    {
+        _isDraggingDeadline = false;
+        if (_draggedDeadlineItem != null)
+        {
+            SetGroupedTasksDragOpacity(_draggedDeadlineItem.Id, 1.0);
+        }
+        if (_draggedDeadlineBorder != null)
+        {
+            _draggedDeadlineBorder.Opacity = 1.0;
+            _draggedDeadlineBorder.ReleaseMouseCapture();
+            _draggedDeadlineBorder = null;
+        }
+        _draggedDeadlineItem = null;
+        HideDragGhost();
+        if (DropIndicator != null) DropIndicator.Visibility = Visibility.Collapsed;
+        _deadlineDropTargetSlot = -1;
+    }
+
+    // === Group Task Thread Dragging ===
+    private bool _isDraggingLink;
+    private Models.DeadlineItem? _linkOriginDeadline;
+    private Point _linkStartPoint;
+    private FrameworkElement? _highlightedCard;
+    private Brush? _savedBorderBrush;
+    private Thickness _savedBorderThickness;
+
+    private System.Windows.Threading.DispatcherTimer? _snapBackTimer;
+
+    private void DeadlineTarget_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        _snapBackTimer?.Stop();
+
+        if (sender is FrameworkElement fe && fe.DataContext is Models.DeadlineItem deadline)
+        {
+            _isDraggingLink = true;
+            _linkOriginDeadline = deadline;
+
+            _linkStartPoint = fe.TranslatePoint(new Point(fe.ActualWidth / 2, fe.ActualHeight / 2), LinkDragCanvas);
+
+            fe.CaptureMouse();
+
+            LinkDragCanvas.Visibility = Visibility.Visible;
+
+            Canvas.SetLeft(LinkOriginDot, _linkStartPoint.X - 3);
+            Canvas.SetTop(LinkOriginDot, _linkStartPoint.Y - 3);
+
+            Canvas.SetLeft(LinkCursorDot, _linkStartPoint.X - 4);
+            Canvas.SetTop(LinkCursorDot, _linkStartPoint.Y - 4);
+
+            LinkThreadPath.Data = null;
+        }
+    }
+
+    private void DeadlineTarget_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isDraggingLink || sender is not FrameworkElement) return;
+        e.Handled = true;
+
+        var currentPos = e.GetPosition(LinkDragCanvas);
+
+        Canvas.SetLeft(LinkCursorDot, currentPos.X - 4);
+        Canvas.SetTop(LinkCursorDot, currentPos.Y - 4);
+
+        double dist = Math.Sqrt(Math.Pow(currentPos.X - _linkStartPoint.X, 2) + Math.Pow(currentPos.Y - _linkStartPoint.Y, 2));
+        double sag = Math.Min(30, dist * 0.12);
+        Point mid = new Point((_linkStartPoint.X + currentPos.X) / 2, (_linkStartPoint.Y + currentPos.Y) / 2 + sag);
+
+        var figure = new PathFigure { StartPoint = _linkStartPoint, IsClosed = false };
+        figure.Segments.Add(new QuadraticBezierSegment(mid, currentPos, true));
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        LinkThreadPath.Data = geometry;
+
+        var windowPos = e.GetPosition(this);
+        var hoveredCard = FindTaskCardUnderPoint(windowPos);
+        HighlightTaskCard(hoveredCard);
+    }
+
+    private void DeadlineTarget_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var fe = sender as FrameworkElement;
+        fe?.ReleaseMouseCapture();
+
+        if (_isDraggingLink && _linkOriginDeadline != null)
+        {
+            e.Handled = true;
+            var windowPos = e.GetPosition(this);
+            var targetCard = FindTaskCardUnderPoint(windowPos);
+            var targetItem = targetCard?.DataContext as Models.TodoItem;
+            var dl = _linkOriginDeadline;
+
+            if (targetItem != null && dl != null)
+            {
+                CancelLinkDrag();
+                GroupTaskWithDeadline(targetItem, dl);
+            }
+            else
+            {
+                var releasePos = e.GetPosition(LinkDragCanvas);
+                PlaySparksBurstAnimation(releasePos, fe);
+            }
+        }
+        else
+        {
+            CancelLinkDrag();
+        }
+    }
+
+    private readonly List<UIElement> _threadParticles = new();
+
+    private void PlaySparksBurstAnimation(Point releasePos, FrameworkElement? originElement)
+    {
+        _isDraggingLink = false;
+        _linkOriginDeadline = null;
+        HighlightTaskCard(null);
+
+        _snapBackTimer?.Stop();
+        ClearThreadParticles();
+
+        double dist = Math.Sqrt(Math.Pow(releasePos.X - _linkStartPoint.X, 2) + Math.Pow(releasePos.Y - _linkStartPoint.Y, 2));
+        if (dist < 8)
+        {
+            CancelLinkDrag();
+            return;
+        }
+
+        var rand = new Random();
+        var brush = LinkThreadPath.Stroke ?? (FindResource("fg/accent") as Brush) ?? Brushes.CornflowerBlue;
+
+        // Normal and tangent vector to thread
+        double dx = releasePos.X - _linkStartPoint.X;
+        double dy = releasePos.Y - _linkStartPoint.Y;
+        double len = Math.Max(1.0, dist);
+        double nx = -dy / len;
+        double ny = dx / len;
+
+        var particleData = new List<(UIElement Element, double X, double Y, double Vx, double Vy, double Size)>();
+
+        // 1. Tip burst particles (around release point)
+        int tipCount = 16;
+        for (int i = 0; i < tipCount; i++)
+        {
+            double angle = rand.NextDouble() * Math.PI * 2;
+            double speed = 50 + rand.NextDouble() * 95;
+            double size = 2.0 + rand.NextDouble() * 2.8;
+            var el = new Ellipse
+            {
+                Width = size,
+                Height = size,
+                Fill = brush,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(el, releasePos.X - size / 2);
+            Canvas.SetTop(el, releasePos.Y - size / 2);
+            LinkDragCanvas.Children.Add(el);
+            _threadParticles.Add(el);
+            particleData.Add((el, releasePos.X, releasePos.Y, Math.Cos(angle) * speed, Math.Sin(angle) * speed, size));
+        }
+
+        // 2. Origin burst particles (around target anchor point)
+        int originCount = 6;
+        for (int i = 0; i < originCount; i++)
+        {
+            double angle = rand.NextDouble() * Math.PI * 2;
+            double speed = 30 + rand.NextDouble() * 50;
+            double size = 1.8 + rand.NextDouble() * 2.0;
+            var el = new Ellipse
+            {
+                Width = size,
+                Height = size,
+                Fill = brush,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(el, _linkStartPoint.X - size / 2);
+            Canvas.SetTop(el, _linkStartPoint.Y - size / 2);
+            LinkDragCanvas.Children.Add(el);
+            _threadParticles.Add(el);
+            particleData.Add((el, _linkStartPoint.X, _linkStartPoint.Y, Math.Cos(angle) * speed, Math.Sin(angle) * speed, size));
+        }
+
+        // 3. Scatter particles along the thread length
+        int lineCount = Math.Clamp((int)(dist / 14), 8, 24);
+        for (int i = 1; i <= lineCount; i++)
+        {
+            double t = (double)i / (lineCount + 1);
+            double px = _linkStartPoint.X + dx * t;
+            double py = _linkStartPoint.Y + dy * t;
+            double perpSpeed = (rand.NextDouble() * 2 - 1) * 75;
+            double parallelSpeed = (rand.NextDouble() * 2 - 1) * 35;
+            double vx = nx * perpSpeed + (dx / len) * parallelSpeed;
+            double vy = ny * perpSpeed + (dy / len) * parallelSpeed;
+            double size = 1.8 + rand.NextDouble() * 2.4;
+
+            var el = new Ellipse
+            {
+                Width = size,
+                Height = size,
+                Fill = brush,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(el, px - size / 2);
+            Canvas.SetTop(el, py - size / 2);
+            LinkDragCanvas.Children.Add(el);
+            _threadParticles.Add(el);
+            particleData.Add((el, px, py, vx, vy, size));
+        }
+
+        LinkCursorDot.Opacity = 0;
+        LinkOriginDot.Opacity = 0;
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        double durationMs = 360.0;
+        double lastElapsed = 0;
+
+        _snapBackTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(10)
+        };
+
+        _snapBackTimer.Tick += (s, ev) =>
+        {
+            double elapsed = sw.Elapsed.TotalMilliseconds;
+            double dt = (elapsed - lastElapsed) / 1000.0;
+            lastElapsed = elapsed;
+            double progress = Math.Clamp(elapsed / durationMs, 0.0, 1.0);
+
+            // Thread line quickly dissolves in first ~70ms
+            double lineFade = Math.Clamp(1.0 - (elapsed / 70.0), 0.0, 1.0);
+            LinkThreadPath.Opacity = lineFade;
+
+            // Particle fade and movement
+            double particleOpacity = Math.Pow(1.0 - progress, 1.2);
+            double drag = Math.Exp(-progress * 2.2);
+
+            for (int i = 0; i < particleData.Count; i++)
+            {
+                var p = particleData[i];
+                double newX = p.X + p.Vx * dt * drag;
+                double newY = p.Y + p.Vy * dt * drag;
+                particleData[i] = (p.Element, newX, newY, p.Vx, p.Vy, p.Size);
+
+                Canvas.SetLeft(p.Element, newX - p.Size / 2);
+                Canvas.SetTop(p.Element, newY - p.Size / 2);
+                p.Element.Opacity = particleOpacity;
+            }
+
+            if (progress >= 1.0)
+            {
+                _snapBackTimer.Stop();
+                ClearThreadParticles();
+                CancelLinkDrag();
+                LinkThreadPath.Opacity = 1.0;
+                LinkCursorDot.Opacity = 1.0;
+                LinkOriginDot.Opacity = 1.0;
+                LinkDragCanvas.Opacity = 1.0;
+            }
+        };
+
+        _snapBackTimer.Start();
+    }
+
+    private void ClearThreadParticles()
+    {
+        if (LinkDragCanvas != null && _threadParticles.Count > 0)
+        {
+            foreach (var p in _threadParticles)
+            {
+                LinkDragCanvas.Children.Remove(p);
+            }
+        }
+        _threadParticles.Clear();
+    }
+
+    private void PulseTargetIcon(FrameworkElement? originElement)
+    {
+        if (originElement == null) return;
+
+        var transform = originElement.RenderTransform as ScaleTransform;
+        if (transform == null)
+        {
+            transform = new ScaleTransform(1, 1);
+            originElement.RenderTransformOrigin = new Point(0.5, 0.5);
+            originElement.RenderTransform = transform;
+        }
+
+        var animX = new System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames();
+        animX.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1.4, System.Windows.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(70))) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        animX.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1.0, System.Windows.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(160))) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } });
+
+        var animY = new System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames();
+        animY.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1.4, System.Windows.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(70))) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        animY.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1.0, System.Windows.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(160))) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } });
+
+        transform.BeginAnimation(ScaleTransform.ScaleXProperty, animX);
+        transform.BeginAnimation(ScaleTransform.ScaleYProperty, animY);
+    }
+
+    private void CancelLinkDrag()
+    {
+        _snapBackTimer?.Stop();
+        ClearThreadParticles();
+        _isDraggingLink = false;
+        _linkOriginDeadline = null;
+        HighlightTaskCard(null);
+        if (LinkDragCanvas != null)
+        {
+            LinkDragCanvas.Visibility = Visibility.Collapsed;
+            LinkThreadPath.Data = null;
+            LinkThreadPath.Opacity = 1.0;
+            LinkCursorDot.Opacity = 1.0;
+            LinkOriginDot.Opacity = 1.0;
+            LinkDragCanvas.Opacity = 1.0;
+        }
+    }
+
+    private FrameworkElement? FindTaskCardUnderPoint(Point windowPoint)
+    {
+        if (TodoList == null || TodoList.Items.Count == 0) return null;
+
+        for (int i = 0; i < TodoList.Items.Count; i++)
+        {
+            if (TodoList.Items[i] is not Models.TodoItem todo || todo.IsCompleted) continue;
+
+            var container = TodoList.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+            if (container == null) continue;
+
+            var card = (container is Border b && b.Name == "TaskCard") ? b : FindChildByName<Border>(container, "TaskCard") ?? container;
+
+            var topPt = card.TransformToAncestor(this).Transform(new Point(0, 0));
+            var rect = new Rect(topPt.X, topPt.Y, card.ActualWidth, card.ActualHeight);
+
+            if (rect.Contains(windowPoint))
+            {
+                return card;
+            }
+        }
+
+        return null;
+    }
+
+    private void HighlightTaskCard(FrameworkElement? card)
+    {
+        if (_highlightedCard == card) return;
+
+        if (_highlightedCard is Border prevBorder)
+        {
+            prevBorder.BorderBrush = _savedBorderBrush;
+            prevBorder.BorderThickness = _savedBorderThickness;
+        }
+
+        _highlightedCard = card;
+
+        if (_highlightedCard is Border newBorder)
+        {
+            _savedBorderBrush = newBorder.BorderBrush;
+            _savedBorderThickness = newBorder.BorderThickness;
+
+            var accent = Application.Current.TryFindResource("fg/accent") as Brush ?? Brushes.DodgerBlue;
+            newBorder.BorderBrush = accent;
+            newBorder.BorderThickness = new Thickness(1.5);
+        }
+    }
+
+    private void GroupTaskWithDeadline(Models.TodoItem targetTodo, Models.DeadlineItem deadline)
+    {
+        var active = _todoService.GetAll().Where(t => !t.IsCompleted).ToList();
+        int oldIdx = active.FindIndex(t => t.Id == targetTodo.Id);
+        if (oldIdx < 0) return;
+
+        targetTodo.GroupDeadlineId = deadline.Id;
+        _todoService.UpdateGroupDeadlineId(targetTodo.Id, deadline.Id);
+
+        active.RemoveAt(oldIdx);
+
+        var slots = _settings.DeadlineSlots;
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (oldIdx < slots[i])
+            {
+                slots[i] = Math.Max(0, slots[i] - 1);
+            }
+        }
+
+        int updatedDlSlot = deadline.LineIndex < slots.Count ? slots[deadline.LineIndex] : Math.Min(deadline.Slot, active.Count);
+        int groupedCount = active.Count(t => t.GroupDeadlineId == deadline.Id);
+        int targetIdx = Math.Min(active.Count, updatedDlSlot + groupedCount);
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (targetIdx <= slots[i] && i != deadline.LineIndex)
+            {
+                slots[i]++;
+            }
+        }
+        _settings.DeadlineSlots = slots;
+
+        active.Insert(targetIdx, targetTodo);
+        _todoService.ReorderActiveTasks(active.Select(t => t.Id).ToList());
+
+        RefreshList();
+    }
+
+    private string? _editingDeadlineId;
+
+    private void BeginEditDeadline(Border container, Models.DeadlineItem? item)
+    {
+        if (item == null) return;
+        var displayPanel = FindChildByName<DockPanel>(container, "DeadlineDisplayPanel");
+        var editBox = FindChildByName<TextBox>(container, "DeadlineEditBox");
+        if (displayPanel == null || editBox == null) return;
+
+        _editingDeadlineId = item.Id;
+        displayPanel.Visibility = Visibility.Collapsed;
+        editBox.Text = item.FullDisplayText;
+        editBox.Visibility = Visibility.Visible;
+        editBox.Focus();
+        editBox.SelectAll();
+    }
+
+    private void DeadlineEditBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.DataContext is Models.DeadlineItem item)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                CommitEditDeadline(textBox, item);
+            }
+            else if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                CancelEditDeadline();
+            }
+        }
+    }
+
+    private void DeadlineEditBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.DataContext is Models.DeadlineItem item)
+        {
+            CommitEditDeadline(textBox, item);
+        }
+    }
+
+    private void CommitEditDeadline(TextBox textBox, Models.DeadlineItem item)
+    {
+        if (_editingDeadlineId == null || _editingDeadlineId != item.Id) return;
+        _editingDeadlineId = null;
+
+        var text = textBox.Text?.Trim() ?? "";
+
+        bool isTimer = false;
+        TimeSpan duration = TimeSpan.Zero;
+        string labelText = text;
+
+        var match = System.Text.RegularExpressions.Regex.Match(
+            text,
+            @"^(?:(.*?)\s*(?:[·•\-])?\s*)?(\d{1,2}:\d{2}:\d{2}|\d{1,2}:\d{2})$"
+        );
+
+        if (match.Success)
+        {
+            var timePart = match.Groups[2].Value;
+            var rawLabel = match.Groups[1].Value.Trim();
+
+            var timeParts = timePart.Split(':');
+            if (timeParts.Length == 3)
+            {
+                int h = int.Parse(timeParts[0]);
+                int m = int.Parse(timeParts[1]);
+                int s = int.Parse(timeParts[2]);
+                if (m < 60 && s < 60)
+                {
+                    duration = new TimeSpan(h, m, s);
+                    isTimer = true;
+                    labelText = rawLabel;
+                }
+            }
+            else if (timeParts.Length == 2)
+            {
+                int m = int.Parse(timeParts[0]);
+                int s = int.Parse(timeParts[1]);
+                if (s < 60)
+                {
+                    duration = new TimeSpan(0, m, s);
+                    isTimer = true;
+                    labelText = rawLabel;
+                }
+            }
+        }
+
+        if (isTimer)
+        {
+            var endUtc = DateTime.UtcNow.Add(duration);
+            _settings.SetDeadlineTimerEnd(item.LineIndex, endUtc);
+            _settings.SetDeadlineLabel(item.LineIndex, labelText);
+        }
+        else
+        {
+            _settings.SetDeadlineTimerEnd(item.LineIndex, null);
+            _settings.SetDeadlineLabel(item.LineIndex, string.IsNullOrWhiteSpace(labelText) ? "title" : labelText);
+        }
+
+        RefreshList();
+    }
+
+    private void CancelEditDeadline()
+    {
+        _editingDeadlineId = null;
+        RefreshList();
+    }
+
+    private void StartDeadlineTimerIfNeeded()
+    {
+        bool hasAnyActiveTimer = false;
+        var now = DateTime.UtcNow;
+        for (int i = 0; i < _settings.DeadlineSlots.Count; i++)
+        {
+            var endUtc = _settings.GetDeadlineTimerEnd(i);
+            if (endUtc != null && endUtc.Value > now)
+            {
+                hasAnyActiveTimer = true;
+                break;
+            }
+        }
+
+        if (hasAnyActiveTimer)
+        {
+            if (_deadlineCountdownTimer == null)
+            {
+                _deadlineCountdownTimer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(500)
+                };
+                _deadlineCountdownTimer.Tick += (s, e) => UpdateDeadlineTimers();
+            }
+            if (!_deadlineCountdownTimer.IsEnabled)
+            {
+                _deadlineCountdownTimer.Start();
+            }
+        }
+        else
+        {
+            _deadlineCountdownTimer?.Stop();
+        }
+    }
+
+    private void UpdateDeadlineTimers()
+    {
+        if (TodoList == null || TodoList.Items.Count == 0) return;
+        bool anyRunning = false;
+        var now = DateTime.UtcNow;
+
+        foreach (var obj in TodoList.Items)
+        {
+            if (obj is Models.DeadlineItem dl)
+            {
+                var endUtc = _settings.GetDeadlineTimerEnd(dl.LineIndex);
+                if (endUtc != null)
+                {
+                    if (_editingDeadlineId == dl.Id)
+                    {
+                        if (endUtc.Value > now) anyRunning = true;
+                        continue;
+                    }
+
+                    var rem = endUtc.Value - now;
+                    if (rem <= TimeSpan.Zero)
+                    {
+                        dl.TimerText = "00:00:00";
+                        dl.IsExpired = true;
+                    }
+                    else
+                    {
+                        anyRunning = true;
+                        int th = (int)rem.TotalHours;
+                        dl.TimerText = $"{th:D2}:{rem.Minutes:D2}:{rem.Seconds:D2}";
+                        dl.IsExpired = false;
+                    }
+                }
+            }
+        }
+
+        if (!anyRunning && _deadlineCountdownTimer?.IsEnabled == true)
+        {
+            _deadlineCountdownTimer.Stop();
+        }
+    }
+
+
+    private void AddDeadlineLine_Click(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is FrameworkElement fe && fe.DataContext is Models.DeadlineItem item)
+        {
+            var activeCount = _todoService.GetAll().Count(t => !t.IsCompleted);
+            var slots = _settings.DeadlineSlots;
+
+            int newSlot = activeCount;
+
+            var lines = new List<(int slot, string label, string? timerEnd, string id)>();
+            for (int i = 0; i < slots.Count; i++)
+            {
+                string l = _settings.GetDeadlineLabel(i);
+                string? t = (i < _settings.DeadlineTimerEnds.Count) ? _settings.DeadlineTimerEnds[i] : null;
+                string id = _settings.GetDeadlineId(i);
+                lines.Add((slots[i], l, t, id));
+            }
+            lines.Add((newSlot, "title", null, Guid.NewGuid().ToString()));
+            lines.Sort((a, b) => a.slot.CompareTo(b.slot));
+
+            _settings.DeadlineSlots = lines.Select(x => x.slot).ToList();
+            _settings.DeadlineLabels = lines.Select(x => x.label).ToList();
+            _settings.DeadlineTimerEnds = lines.Select(x => x.timerEnd).ToList();
+            _settings.DeadlineIds = lines.Select(x => x.id).ToList();
+
+            RefreshList();
+        }
+    }
+
+    private void DeleteDeadlineLine_Click(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is FrameworkElement fe && fe.DataContext is Models.DeadlineItem item)
+        {
+            if (item.HasGroupedTasks)
+            {
+                var allTodos = _todoService.GetAll();
+                foreach (var t in allTodos.Where(t => t.GroupDeadlineId == item.Id))
+                {
+                    t.GroupDeadlineId = null;
+                    _todoService.UpdateGroupDeadlineId(t.Id, null);
+                }
+                RefreshList();
+                return;
+            }
+
+            var slots = _settings.DeadlineSlots;
+            if (item.LineIndex >= 0 && item.LineIndex < slots.Count)
+            {
+                string deletedId = item.Id;
+                var allTodos = _todoService.GetAll();
+                foreach (var t in allTodos.Where(t => t.GroupDeadlineId == deletedId))
+                {
+                    t.GroupDeadlineId = null;
+                    _todoService.UpdateGroupDeadlineId(t.Id, null);
+                }
+
+                slots.RemoveAt(item.LineIndex);
+                _settings.DeadlineSlots = slots;
+                if (_settings.DeadlineLabels.Count > item.LineIndex)
+                {
+                    var labels = _settings.DeadlineLabels;
+                    labels.RemoveAt(item.LineIndex);
+                    _settings.DeadlineLabels = labels;
+                }
+                if (_settings.DeadlineTimerEnds.Count > item.LineIndex)
+                {
+                    var timerEnds = _settings.DeadlineTimerEnds;
+                    timerEnds.RemoveAt(item.LineIndex);
+                    _settings.DeadlineTimerEnds = timerEnds;
+                }
+                if (_settings.DeadlineIds.Count > item.LineIndex)
+                {
+                    var ids = _settings.DeadlineIds;
+                    ids.RemoveAt(item.LineIndex);
+                    _settings.DeadlineIds = ids;
+                }
+                RefreshList();
+            }
+        }
+    }
+
+    private void AddFallbackDeadline_Click(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        var activeCount = _todoService.GetAll().Count(t => !t.IsCompleted);
+        int defaultSlot = activeCount;
+        _settings.DeadlineSlots = new List<int> { defaultSlot };
+        _settings.DeadlineLabels = new List<string> { "title" };
+        _settings.DeadlineTimerEnds = new List<string?> { null };
+        _settings.DeadlineIds = new List<string> { Guid.NewGuid().ToString() };
+        RefreshList();
+    }
+
+
+    private void OnActiveTaskRemoved(int taskIndex)
+    {
+        var slots = _settings.DeadlineSlots;
+        bool changed = false;
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (slots[i] > taskIndex)
+            {
+                slots[i]--;
+                changed = true;
+            }
+        }
+        if (changed)
+        {
+            _settings.DeadlineSlots = slots;
+        }
+    }
+
+    private void OnActiveTaskAddedToTop()
+    {
+        var slots = _settings.DeadlineSlots;
+        for (int i = 0; i < slots.Count; i++)
+        {
+            slots[i]++;
+        }
+        _settings.DeadlineSlots = slots;
     }
 
     private static T? FindChildByName<T>(DependencyObject parent, string name) where T : FrameworkElement
@@ -1179,18 +2534,261 @@ public partial class MainWindow : Window
     private void CompletedSection_Click(object sender, MouseButtonEventArgs e)
     {
         _showCompleted = !_showCompleted;
+        AnimateCompletedArrow(_showCompleted);
         RefreshList();
+    }
+
+    private void ClearCompletedButton_Click(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+
+        var cards = new List<Border>();
+        for (int i = 0; i < CompletedList.Items.Count; i++)
+        {
+            var container = CompletedList.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+            if (container == null) continue;
+            var card = FindChildByName<Border>(container, "CompletedCard");
+            if (card != null) cards.Add(card);
+        }
+
+        if (cards.Count == 0)
+        {
+            _todoService.ClearCompleted();
+            _showCompleted = false;
+            AnimateCompletedArrow(false);
+            RefreshList();
+            return;
+        }
+
+        if (ClearCompletedButton != null)
+        {
+            ClearCompletedButton.IsHitTestVisible = false;
+            var buttonFade = new System.Windows.Media.Animation.DoubleAnimation(ClearCompletedButton.Opacity, 0, TimeSpan.FromMilliseconds(200));
+            ClearCompletedButton.BeginAnimation(UIElement.OpacityProperty, buttonFade);
+        }
+
+        AnimateCompletedArrow(false);
+
+        bool finished = false;
+        Action doClear = () =>
+        {
+            if (finished) return;
+            finished = true;
+            _todoService.ClearCompleted();
+            _showCompleted = false;
+            RefreshList();
+        };
+
+        var fallbackTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        fallbackTimer.Tick += (s, ev) =>
+        {
+            fallbackTimer.Stop();
+            doClear();
+        };
+        fallbackTimer.Start();
+
+        int remaining = cards.Count;
+        var dissolveDuration = TimeSpan.FromMilliseconds(200);
+        var collapseDuration = TimeSpan.FromMilliseconds(150);
+
+        var blurEase = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut };
+        var fadeEase = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn };
+        var collapseEase = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut };
+
+        foreach (var card in cards)
+        {
+            card.IsHitTestVisible = false;
+            card.ClipToBounds = false;
+
+            var blur = new System.Windows.Media.Effects.BlurEffect
+            {
+                Radius = 0,
+                RenderingBias = System.Windows.Media.Effects.RenderingBias.Performance
+            };
+            card.Effect = blur;
+
+            var blurAnim = new System.Windows.Media.Animation.DoubleAnimation(0, 14, dissolveDuration) { EasingFunction = blurEase };
+            var opacityAnim = new System.Windows.Media.Animation.DoubleAnimation(card.Opacity, 0, dissolveDuration) { EasingFunction = fadeEase };
+
+            opacityAnim.Completed += (s, ev) =>
+            {
+                card.ClipToBounds = true;
+                double initialHeight = card.ActualHeight;
+                card.Height = initialHeight;
+
+                var heightAnim = new System.Windows.Media.Animation.DoubleAnimation(initialHeight, 0, collapseDuration) { EasingFunction = collapseEase };
+                var marginAnim = new System.Windows.Media.Animation.ThicknessAnimation(card.Margin, new Thickness(0), collapseDuration) { EasingFunction = collapseEase };
+
+                heightAnim.Completed += (s2, ev2) =>
+                {
+                    remaining--;
+                    if (remaining <= 0)
+                    {
+                        fallbackTimer.Stop();
+                        doClear();
+                    }
+                };
+
+                card.BeginAnimation(FrameworkElement.HeightProperty, heightAnim);
+                card.BeginAnimation(FrameworkElement.MarginProperty, marginAnim);
+            };
+
+            blur.BeginAnimation(System.Windows.Media.Effects.BlurEffect.RadiusProperty, blurAnim);
+            card.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
+        }
+    }
+
+    private void AnimateCompletedArrow(bool expanded)
+    {
+        if (CompletedArrow == null) return;
+
+        var transform = CompletedArrow.RenderTransform as RotateTransform;
+        if (transform == null || transform.IsFrozen)
+        {
+            transform = new RotateTransform(expanded ? 90 : 0);
+            CompletedArrow.RenderTransformOrigin = new Point(0.5, 0.5);
+            CompletedArrow.RenderTransform = transform;
+            return;
+        }
+
+        double targetAngle = expanded ? 90 : 0;
+        var anim = new System.Windows.Media.Animation.DoubleAnimation
+        {
+            To = targetAngle,
+            Duration = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new System.Windows.Media.Animation.CubicEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut
+            }
+        };
+        transform.BeginAnimation(RotateTransform.AngleProperty, anim);
+    }
+
+    private void RemoveDeadlineById(string deadlineId)
+    {
+        var slots = _settings.DeadlineSlots;
+        var labels = _settings.DeadlineLabels;
+        var timerEnds = _settings.DeadlineTimerEnds;
+        var ids = _settings.DeadlineIds;
+
+        int idx = -1;
+        for (int i = 0; i < ids.Count; i++)
+        {
+            if (ids[i] == deadlineId)
+            {
+                idx = i;
+                break;
+            }
+        }
+
+        if (idx >= 0 && idx < slots.Count)
+        {
+            var allTodos = _todoService.GetAll();
+            foreach (var t in allTodos.Where(t => t.GroupDeadlineId == deadlineId))
+            {
+                t.GroupDeadlineId = null;
+                _todoService.UpdateGroupDeadlineId(t.Id, null);
+            }
+
+            slots.RemoveAt(idx);
+            _settings.DeadlineSlots = slots;
+            if (labels.Count > idx)
+            {
+                labels.RemoveAt(idx);
+                _settings.DeadlineLabels = labels;
+            }
+            if (timerEnds.Count > idx)
+            {
+                timerEnds.RemoveAt(idx);
+                _settings.DeadlineTimerEnds = timerEnds;
+            }
+            if (ids.Count > idx)
+            {
+                ids.RemoveAt(idx);
+                _settings.DeadlineIds = ids;
+            }
+        }
+    }
+
+    private void CleanupFinishedGroups()
+    {
+        var allTodos = _todoService.GetAll();
+        var activeTodos = allTodos.Where(t => !t.IsCompleted).ToList();
+        var slots = _settings.DeadlineSlots;
+
+        if (activeTodos.Count == 0)
+        {
+            if (slots.Count > 0)
+            {
+                var allGrouped = allTodos.Where(t => !string.IsNullOrEmpty(t.GroupDeadlineId)).ToList();
+                foreach (var t in allGrouped)
+                {
+                    t.GroupDeadlineId = null;
+                    _todoService.UpdateGroupDeadlineId(t.Id, null);
+                }
+
+                _settings.DeadlineSlots = new List<int>();
+                _settings.DeadlineLabels = new List<string>();
+                _settings.DeadlineTimerEnds = new List<string?>();
+                _settings.DeadlineIds = new List<string>();
+            }
+            return;
+        }
+
+        var lines = new List<(int slot, string label, string? timerEnd, string id)>();
+        bool changed = false;
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            string id = _settings.GetDeadlineId(i);
+            string label = _settings.GetDeadlineLabel(i);
+            string? timerEnd = (i < _settings.DeadlineTimerEnds.Count) ? _settings.DeadlineTimerEnds[i] : null;
+
+            int activeGrouped = activeTodos.Count(t => t.GroupDeadlineId == id);
+            int totalGrouped = allTodos.Count(t => t.GroupDeadlineId == id);
+
+            // If a group had tasks and all of them are now closed (activeGrouped == 0): delete this title completely!
+            if (totalGrouped > 0 && activeGrouped == 0)
+            {
+                changed = true;
+                foreach (var t in allTodos.Where(t => t.GroupDeadlineId == id))
+                {
+                    t.GroupDeadlineId = null;
+                    _todoService.UpdateGroupDeadlineId(t.Id, null);
+                }
+                continue;
+            }
+
+            lines.Add((slots[i], label, timerEnd, id));
+        }
+
+        if (changed)
+        {
+            _settings.DeadlineSlots = lines.Select(x => x.slot).ToList();
+            _settings.DeadlineLabels = lines.Select(x => x.label).ToList();
+            _settings.DeadlineTimerEnds = lines.Select(x => x.timerEnd).ToList();
+            _settings.DeadlineIds = lines.Select(x => x.id).ToList();
+        }
     }
 
     private void RefreshList()
     {
+        CleanupFinishedGroups();
         var todos = _todoService.GetAll();
 
         if (_isUrgentMode)
         {
             var urgent = todos.Where(t => t.IsUrgent && !t.IsCompleted).ToList();
             TodoList.ItemsSource = urgent;
+            if (AddDeadlineFallback != null) AddDeadlineFallback.Visibility = Visibility.Collapsed;
             CompletedSection.Visibility = Visibility.Collapsed;
+            if (ClearCompletedButton != null)
+            {
+                ClearCompletedButton.BeginAnimation(UIElement.OpacityProperty, null);
+                ClearCompletedButton.Opacity = 0.7;
+                ClearCompletedButton.IsHitTestVisible = true;
+                ClearCompletedButton.Visibility = Visibility.Collapsed;
+            }
             CompletedList.ItemsSource = null;
         }
         else
@@ -1198,20 +2796,161 @@ public partial class MainWindow : Window
             var active = todos.Where(t => !t.IsCompleted).ToList();
             var completed = todos.Where(t => t.IsCompleted).ToList();
 
-            TodoList.ItemsSource = active;
+            if (active.Count > 0)
+            {
+                var slots = _settings.DeadlineSlots.OrderBy(s => s).ToList();
+                var listItems = new List<object>();
+                int activeCount = active.Count;
+                int lineIndex = 0;
+                var now = DateTime.UtcNow;
+
+                Models.DeadlineItem CreateDeadlineItem(int slot, int idx)
+                {
+                    var endUtc = _settings.GetDeadlineTimerEnd(idx);
+                    bool isTimer = endUtc != null;
+                    bool isExpired = false;
+                    string timerText = "";
+                    string label = _settings.GetDeadlineLabel(idx);
+                    string id = _settings.GetDeadlineId(idx);
+
+                    if (isTimer)
+                    {
+                        var rem = endUtc!.Value - now;
+                        if (rem <= TimeSpan.Zero)
+                        {
+                            timerText = "00:00:00";
+                            isExpired = true;
+                        }
+                        else
+                        {
+                            int th = (int)rem.TotalHours;
+                            timerText = $"{th:D2}:{rem.Minutes:D2}:{rem.Seconds:D2}";
+                            isExpired = false;
+                        }
+                    }
+
+                    return new Models.DeadlineItem
+                    {
+                        Id = id,
+                        Slot = slot,
+                        LineIndex = idx,
+                        LabelText = label,
+                        IsTimer = isTimer,
+                        TimerText = timerText,
+                        IsExpired = isExpired
+                    };
+                }
+
+                var deadlineItems = new List<Models.DeadlineItem>();
+                for (int i = 0; i < activeCount; i++)
+                {
+                    while (lineIndex < slots.Count && slots[lineIndex] == i)
+                    {
+                        var dlItem = CreateDeadlineItem(slots[lineIndex], lineIndex);
+                        deadlineItems.Add(dlItem);
+                        listItems.Add(dlItem);
+                        lineIndex++;
+                    }
+
+                    active[i].IsAboveDeadline = (slots.Count == 0 || i < slots[0]);
+                    listItems.Add(active[i]);
+                }
+
+                while (lineIndex < slots.Count)
+                {
+                    var dlItem = CreateDeadlineItem(Math.Min(slots[lineIndex], activeCount), lineIndex);
+                    deadlineItems.Add(dlItem);
+                    listItems.Add(dlItem);
+                    lineIndex++;
+                }
+
+                // Update grouping, corner radiuses and margins
+                var validDeadlineIds = new HashSet<string>(deadlineItems.Select(d => d.Id));
+                var groupedSet = new HashSet<string>();
+
+                foreach (var dl in deadlineItems)
+                {
+                    var dlGrouped = active.Where(t => t.GroupDeadlineId == dl.Id).ToList();
+                    dl.HasGroupedTasks = dlGrouped.Count > 0;
+
+                    if (dlGrouped.Count == 1)
+                    {
+                        dlGrouped[0].CardCornerRadius = new CornerRadius(8);
+                        dlGrouped[0].CardMargin = new Thickness(0, 0, 0, 11);
+                        groupedSet.Add(dlGrouped[0].Id);
+                    }
+                    else if (dlGrouped.Count >= 2)
+                    {
+                        dlGrouped[0].CardCornerRadius = new CornerRadius(8, 8, 0, 0);
+                        dlGrouped[0].CardMargin = new Thickness(0, 0, 0, 0);
+                        groupedSet.Add(dlGrouped[0].Id);
+
+                        for (int g = 1; g < dlGrouped.Count - 1; g++)
+                        {
+                            dlGrouped[g].CardCornerRadius = new CornerRadius(0);
+                            dlGrouped[g].CardMargin = new Thickness(0, 0, 0, 0);
+                            groupedSet.Add(dlGrouped[g].Id);
+                        }
+
+                        dlGrouped[^1].CardCornerRadius = new CornerRadius(0, 0, 8, 8);
+                        dlGrouped[^1].CardMargin = new Thickness(0, 0, 0, 11);
+                        groupedSet.Add(dlGrouped[^1].Id);
+                    }
+                }
+
+                foreach (var t in active)
+                {
+                    if (!groupedSet.Contains(t.Id))
+                    {
+                        t.CardCornerRadius = new CornerRadius(8);
+                        t.CardMargin = new Thickness(0, 0, 0, 6);
+                        if (!string.IsNullOrEmpty(t.GroupDeadlineId) && !validDeadlineIds.Contains(t.GroupDeadlineId))
+                        {
+                            t.GroupDeadlineId = null;
+                            _todoService.UpdateGroupDeadlineId(t.Id, null);
+                        }
+                    }
+                }
+
+                TodoList.ItemsSource = listItems;
+                StartDeadlineTimerIfNeeded();
+                if (AddDeadlineFallback != null)
+                {
+                    AddDeadlineFallback.Visibility = (slots.Count == 0) ? Visibility.Visible : Visibility.Collapsed;
+                }
+            }
+            else
+            {
+                TodoList.ItemsSource = null;
+                StartDeadlineTimerIfNeeded();
+                if (AddDeadlineFallback != null) AddDeadlineFallback.Visibility = Visibility.Collapsed;
+            }
 
             if (completed.Count > 0)
             {
                 CompletedSection.Visibility = Visibility.Visible;
                 CompletedText.Text = $"Завершенные ({completed.Count})";
-                CompletedArrow.RenderTransform = _showCompleted
-                    ? new System.Windows.Media.RotateTransform(90, 6, 6)
-                    : null;
+                if (ClearCompletedButton != null)
+                {
+                    ClearCompletedButton.BeginAnimation(UIElement.OpacityProperty, null);
+                    ClearCompletedButton.Opacity = 0.7;
+                    ClearCompletedButton.IsHitTestVisible = true;
+                    ClearCompletedButton.Visibility = _showCompleted ? Visibility.Visible : Visibility.Collapsed;
+                }
                 CompletedList.ItemsSource = _showCompleted ? completed : null;
             }
             else
             {
+                _showCompleted = false;
+                AnimateCompletedArrow(false);
                 CompletedSection.Visibility = Visibility.Collapsed;
+                if (ClearCompletedButton != null)
+                {
+                    ClearCompletedButton.BeginAnimation(UIElement.OpacityProperty, null);
+                    ClearCompletedButton.Opacity = 0.7;
+                    ClearCompletedButton.IsHitTestVisible = true;
+                    ClearCompletedButton.Visibility = Visibility.Collapsed;
+                }
                 CompletedList.ItemsSource = null;
             }
         }
@@ -1295,5 +3034,145 @@ public partial class MainWindow : Window
         graphics.DrawLines(pen, new System.Drawing.Point[] { new(8, 16), new(14, 22), new(24, 10) });
         var hIcon = bitmap.GetHicon();
         return System.Drawing.Icon.FromHandle(hIcon);
+    }
+
+    // === Window Height Resizing (Edge Glow + HUD) ===
+    private bool _isResizingHeight;
+    private double _resizeStartScreenDipY;
+    private double _resizeStartHeight;
+
+    private double GetScreenDipY(Point windowPoint)
+    {
+        var screenPoint = PointToScreen(windowPoint);
+        var source = PresentationSource.FromVisual(this);
+        double dpiScaleY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+        return screenPoint.Y / dpiScaleY;
+    }
+
+    private void ResizeGrip_MouseEnter(object sender, MouseEventArgs e)
+    {
+        var anim = new DoubleAnimation(0.75, TimeSpan.FromMilliseconds(160))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        ResizeGlowBar.BeginAnimation(UIElement.OpacityProperty, anim);
+    }
+
+    private void ResizeGrip_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (!_isResizingHeight)
+        {
+            var anim = new DoubleAnimation(0.0, TimeSpan.FromMilliseconds(200))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+            ResizeGlowBar.BeginAnimation(UIElement.OpacityProperty, anim);
+        }
+    }
+
+    private void ResizeGrip_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            e.Handled = true;
+            _isResizingHeight = true;
+            _resizeStartScreenDipY = GetScreenDipY(e.GetPosition(this));
+            _resizeStartHeight = Height;
+            (sender as UIElement)?.CaptureMouse();
+
+            var glowAnim = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(120));
+            ResizeGlowBar.BeginAnimation(UIElement.OpacityProperty, glowAnim);
+
+            ShowHeightHud();
+        }
+    }
+
+    private void ResizeGrip_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_isResizingHeight)
+        {
+            e.Handled = true;
+            double currentScreenDipY = GetScreenDipY(e.GetPosition(this));
+            double delta = currentScreenDipY - _resizeStartScreenDipY;
+            double newHeight = Math.Clamp(_resizeStartHeight + delta, MinHeight, MaxHeight);
+            Height = newHeight;
+            UpdateHeightHud(newHeight);
+        }
+    }
+
+    private void ResizeGrip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_isResizingHeight)
+        {
+            e.Handled = true;
+            FinishResize(sender as UIElement);
+        }
+    }
+
+    private void ResizeGrip_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        if (_isResizingHeight)
+        {
+            FinishResize(sender as UIElement);
+        }
+    }
+
+    private void FinishResize(UIElement? element)
+    {
+        _isResizingHeight = false;
+        element?.ReleaseMouseCapture();
+        HideHeightHud();
+        _settings.Height = Height;
+
+        if (!ResizeGripArea.IsMouseOver)
+        {
+            var anim = new DoubleAnimation(0.0, TimeSpan.FromMilliseconds(200))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+            ResizeGlowBar.BeginAnimation(UIElement.OpacityProperty, anim);
+        }
+        else
+        {
+            var anim = new DoubleAnimation(0.75, TimeSpan.FromMilliseconds(160));
+            ResizeGlowBar.BeginAnimation(UIElement.OpacityProperty, anim);
+        }
+    }
+
+    private void ShowHeightHud()
+    {
+        UpdateHeightHud(Height);
+
+        var fade = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(140))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        var slide = new DoubleAnimation(0.0, TimeSpan.FromMilliseconds(140))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+
+        HeightHud.BeginAnimation(UIElement.OpacityProperty, fade);
+        HeightHudTranslate.BeginAnimation(TranslateTransform.YProperty, slide);
+    }
+
+    private void UpdateHeightHud(double currentHeight)
+    {
+        HeightHudText.Text = $"{(int)Math.Round(currentHeight)} px";
+    }
+
+    private void HideHeightHud()
+    {
+        var fade = new DoubleAnimation(0.0, TimeSpan.FromMilliseconds(200))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+        var slide = new DoubleAnimation(4.0, TimeSpan.FromMilliseconds(200))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+
+        HeightHud.BeginAnimation(UIElement.OpacityProperty, fade);
+        HeightHudTranslate.BeginAnimation(TranslateTransform.YProperty, slide);
     }
 }

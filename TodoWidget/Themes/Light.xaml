@@ -3,17 +3,18 @@
 
     <!-- Light Theme -->
     <SolidColorBrush x:Key="bg/widget" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="bg/task" Color="#EBEEF4"/>
-    <SolidColorBrush x:Key="fg/primary" Color="#12151B"/>
-    <SolidColorBrush x:Key="fg/secondary" Color="#8C8C8C"/>
-    <SolidColorBrush x:Key="bg/checkbox-filled" Color="#1F64A9"/>
-    <SolidColorBrush x:Key="bg/button" Color="#1F64A9"/>
-    <SolidColorBrush x:Key="fg/danger" Color="#CF6969"/>
-    <SolidColorBrush x:Key="bg/checkbox-empty" Color="#D0D3DA"/>
+    <SolidColorBrush x:Key="bg/task" Color="#F0F2F7"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#A1A1A8"/>
+    <SolidColorBrush x:Key="fg/primary" Color="#272630"/>
+    <SolidColorBrush x:Key="fg/secondary" Color="#A1A1A8"/>
+    <SolidColorBrush x:Key="bg/checkbox-filled" Color="#406B96"/>
+    <SolidColorBrush x:Key="bg/button" Color="#406B96"/>
+    <SolidColorBrush x:Key="fg/danger" Color="#DE3A3D"/>
+    <SolidColorBrush x:Key="bg/checkbox-empty" Color="#D4D6D9"/>
     <SolidColorBrush x:Key="bg/soft" Color="#E0E3EA"/>
-    <SolidColorBrush x:Key="bg/input" Color="#EBEEF4"/>
-    <SolidColorBrush x:Key="border/widget" Color="#D0D0D0"/>
-    <SolidColorBrush x:Key="HeaderIconColor" Color="#404245"/>
+    <SolidColorBrush x:Key="bg/input" Color="#F0F2F7"/>
+    <SolidColorBrush x:Key="border/widget" Color="#C8C8C8"/>
+    <SolidColorBrush x:Key="HeaderIconColor" Color="#A1A1A8"/>
     <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Inter</FontFamily>
     <FontFamily x:Key="FontSemiBold">pack://application:,,,/Fonts/#Inter SemiBold</FontFamily>
 

@@ -4,6 +4,7 @@
     <!-- Terminal Theme -->
     <SolidColorBrush x:Key="bg/widget" Color="#141729"/>
     <SolidColorBrush x:Key="bg/task" Color="#1A1D2F"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#85899D"/>
     <SolidColorBrush x:Key="bg/input" Color="#1A1D2F"/>
     <SolidColorBrush x:Key="bg/checkbox-empty" Color="#282C43"/>
     <SolidColorBrush x:Key="bg/checkbox-filled" Color="#21B568"/>

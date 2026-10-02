@@ -4,6 +4,7 @@
     <!-- Nocturnal K Theme -->
     <SolidColorBrush x:Key="bg/widget" Color="#092B73"/>
     <SolidColorBrush x:Key="bg/task" Color="#1B408E"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#4D74C5"/>
     <SolidColorBrush x:Key="bg/input" Color="#1B408E"/>
     <SolidColorBrush x:Key="bg/checkbox-empty" Color="#14357C"/>
     <SolidColorBrush x:Key="bg/checkbox-filled" Color="#851912"/>

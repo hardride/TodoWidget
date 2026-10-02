@@ -4,6 +4,7 @@
     <!-- Dark Theme -->
     <SolidColorBrush x:Key="bg/widget" Color="#12151B"/>
     <SolidColorBrush x:Key="bg/task" Color="#20232B"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#515861"/>
     <SolidColorBrush x:Key="bg/input" Color="#20232B"/>
     <SolidColorBrush x:Key="bg/checkbox-empty" Color="#343843"/>
     <SolidColorBrush x:Key="bg/checkbox-filled" Color="#1F64A9"/>

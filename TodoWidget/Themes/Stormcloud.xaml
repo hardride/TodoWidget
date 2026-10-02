@@ -4,6 +4,7 @@
     <!-- Stormcloud Theme -->
     <SolidColorBrush x:Key="bg/widget" Color="#2E343F"/>
     <SolidColorBrush x:Key="bg/task" Color="#3B4251"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#6C798E"/>
     <SolidColorBrush x:Key="bg/input" Color="#3B4251"/>
     <SolidColorBrush x:Key="bg/checkbox-empty" Color="#464F60"/>
     <SolidColorBrush x:Key="bg/checkbox-filled" Color="#1E89A2"/>

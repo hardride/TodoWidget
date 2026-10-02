@@ -4,6 +4,7 @@
     <!-- Graffity Theme -->
     <SolidColorBrush x:Key="bg/widget" Color="#2F2633"/>
     <SolidColorBrush x:Key="bg/task" Color="#221926"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#76647E"/>
     <SolidColorBrush x:Key="bg/input" Color="#221926"/>
     <SolidColorBrush x:Key="bg/checkbox-empty" Color="#433A47"/>
     <SolidColorBrush x:Key="bg/checkbox-filled" Color="#C11310"/>

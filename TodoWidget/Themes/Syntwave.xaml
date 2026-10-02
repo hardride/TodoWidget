@@ -4,6 +4,7 @@
     <!-- Syntwave Theme -->
     <SolidColorBrush x:Key="bg/widget" Color="#080927"/>
     <SolidColorBrush x:Key="bg/task" Color="#2A1D3D"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#51306B"/>
     <SolidColorBrush x:Key="bg/input" Color="#2A1D3D"/>
     <SolidColorBrush x:Key="bg/checkbox-empty" Color="#3C2C55"/>
     <SolidColorBrush x:Key="bg/checkbox-filled" Color="#44B8EC"/>
