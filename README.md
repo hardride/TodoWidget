@@ -23,7 +23,10 @@
 
 Чтобы скачать готовый виджет:
 1. Нажмите прямую ссылку: **[Скачать TodoWidget.exe](https://github.com/hardride/TodoWidget/releases/latest/download/TodoWidget.exe)**
-2. Либо перейдите в раздел **[Releases (Релизы)](https://github.com/hardride/TodoWidget/releases/latest)** (в правой колонке репозитория) и в блоке **Assets** скачайте `TodoWidget.exe` или `TodoWidget-v1.0.4.zip`.
+2. Либо перейдите в раздел **[Releases (Релизы)](https://github.com/hardride/TodoWidget/releases/latest)** (в правой колонке репозитория) и в блоке Assets скачайте подходящий файл:
+- `TodoWidget.exe` — готовый запускаемый файл «Всё включено» (~180 МБ).
+- `TodoWidget-net9.zip` — облегчённый архив для систем с установленным .NET 9 (~6 МБ, внутри `TodoWidget.exe`).
+- `TodoWidget-vX.X.X.zip` — полный архив версии «Всё включено»..
 3. Запустите скачанный файл — установка не требуется!
 
 ---
