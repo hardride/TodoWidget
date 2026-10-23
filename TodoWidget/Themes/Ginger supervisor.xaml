@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Ginger supervisor Theme -->
+    <SolidColorBrush x:Key="bg/widget" Color="#EEE6D3"/>
+    <SolidColorBrush x:Key="bg/task" Color="#F5F4F3"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#A2A2A2"/>
+    <SolidColorBrush x:Key="bg/input" Color="#F5F4F3"/>
+    <SolidColorBrush x:Key="bg/checkbox-empty" Color="#E9E6E6"/>
+    <SolidColorBrush x:Key="bg/checkbox-filled" Color="#D51518"/>
+    <SolidColorBrush x:Key="bg/button" Color="#D51518"/>
+    <SolidColorBrush x:Key="bg/soft" Color="#E9E6E6"/>
+    <SolidColorBrush x:Key="fg/primary" Color="#383840"/>
+    <SolidColorBrush x:Key="fg/secondary" Color="#5D5D69"/>
+    <SolidColorBrush x:Key="fg/danger" Color="#CE1418"/>
+    <SolidColorBrush x:Key="border/widget" Color="#E2D3C9"/>
+    <SolidColorBrush x:Key="HeaderIconColor" Color="#5D5D69"/>
+    <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Inter</FontFamily>
+    <FontFamily x:Key="FontSemiBold">pack://application:,,,/Fonts/#Inter SemiBold</FontFamily>
+    <BitmapImage x:Key="WidgetBackgroundImage" UriSource="pack://application:,,,/Images/bg_cat_day.png"/>
+
+</ResourceDictionary>

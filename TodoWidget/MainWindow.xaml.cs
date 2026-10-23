@@ -17,6 +17,10 @@ public partial class MainWindow : Window
     private readonly TodoService _todoService = new();
     private readonly SettingsService _settings = new();
     private readonly UpdateService _updateService = new();
+    private readonly AudioService _audioService = new();
+    private bool _showingAudio;
+    private bool _isDraggingAudioSlider;
+    private bool _isDraggingVolumeSlider;
     private TaskbarIcon? _trayIcon;
     private TileWindow? _tile;
     private bool _isPinned = true;
@@ -71,7 +75,9 @@ public partial class MainWindow : Window
             savedTheme = "Amber";
         if (savedTheme == "K in the night")
             savedTheme = "Nocturnal K";
-        var validThemes = new[] { "Dark", "Light", "Kanagawa", "Argentina for Plemyannic", "Terminal", "Amber", "Pixel-76", "Aeropixel", "Syntwave", "Stormcloud", "Deep Antarctic", "Druid", "Hoarfrost", "Coalglow", "Nocturnal K", "Engraving K", "Graffity" };
+        if (savedTheme == "Supervisor")
+            savedTheme = "Ginger supervisor";
+        var validThemes = new[] { "Dark", "Light", "Kanagawa", "Argentina for Plemyannic", "Terminal", "Amber", "Pixel-76", "Aeropixel", "Syntwave", "Stormcloud", "Deep Antarctic", "Druid", "Hoarfrost", "Coalglow", "Nocturnal K", "Engraving K", "Graffity", "Ginger supervisor", "Tranquility", "Paper", "Mint ice cream" };
         if (!validThemes.Contains(savedTheme))
             savedTheme = "Dark";
 
@@ -122,6 +128,16 @@ public partial class MainWindow : Window
         SetupHeaderIcons();
         _updateService.Start();
         SetupDragVisuals();
+
+        _audioService.StateChanged += Audio_StateChanged;
+        _audioService.TrackChanged += Audio_TrackChanged;
+        _audioService.PositionChanged += Audio_PositionChanged;
+        _audioService.PlaylistUpdated += () => Dispatcher.Invoke(BuildAudioTrackList);
+        BuildAudioTrackList();
+        if (_audioService.CurrentTrack != null)
+        {
+            Audio_TrackChanged(_audioService.CurrentTrack);
+        }
 
         MouseLeftButtonDown += (s, e) =>
         {
@@ -241,14 +257,30 @@ public partial class MainWindow : Window
 
     private void UpdateHeaderIcons()
     {
+        if (AudioButton != null)
+        {
+            AudioButton.Tag = _showingAudio ? "Active" : null;
+            AudioButton.ToolTip = _showingAudio ? "Закрыть плеер" : "Музыка для концентрации";
+        }
+
         if (ThemeButton != null)
+        {
             ThemeButton.Tag = _showingThemes ? "Active" : null;
+            ThemeButton.ToolTip = _showingThemes ? "Закрыть темы" : "Темы оформления";
+        }
 
         if (OpacityButton != null)
-            OpacityButton.Tag = (OpacitySliderBorder?.Visibility == Visibility.Visible) ? "Active" : null;
+        {
+            bool isOpacityOpen = (OpacitySliderBorder?.Visibility == Visibility.Visible);
+            OpacityButton.Tag = isOpacityOpen ? "Active" : null;
+            OpacityButton.ToolTip = isOpacityOpen ? "Скрыть ползунок" : "Прозрачность виджета";
+        }
 
         if (PinButton != null)
+        {
             PinButton.Tag = _isPinned ? "Active" : null;
+            PinButton.ToolTip = _isPinned ? "Открепить (поверх всех окон)" : "Закрепить поверх всех окон";
+        }
 
         if (PinIconPath != null)
             PinIconPath.Data = (StreamGeometry)FindResource(_isPinned ? "PinIcon" : "PinOffIcon");
@@ -370,6 +402,7 @@ public partial class MainWindow : Window
         _trayIcon?.Dispose();
         _tile?.Close();
         _deadlineCountdownTimer?.Stop();
+        _audioService.Pause();
     }
 
     // === Theme ===
@@ -382,6 +415,11 @@ public partial class MainWindow : Window
 
         if (_showingThemes)
         {
+            if (_showingAudio)
+            {
+                _showingAudio = false;
+                AudioView.Visibility = Visibility.Collapsed;
+            }
             TasksView.Visibility = Visibility.Collapsed;
             ThemesView.Visibility = Visibility.Visible;
             HeaderTitle.Visibility = Visibility.Visible;
@@ -434,6 +472,10 @@ public partial class MainWindow : Window
     private void NocturnalKTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Nocturnal K");
     private void EngravingKTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Engraving K");
     private void GraffityTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Graffity");
+    private void GingerSupervisorTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Ginger supervisor");
+    private void TranquilityTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Tranquility");
+    private void PaperTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Paper");
+    private void MintIceCreamTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Mint ice cream");
 
     private void ApplyTheme(string theme)
     {
@@ -481,6 +523,8 @@ public partial class MainWindow : Window
             "Nocturnal K" => "bg_best.png",
             "Engraving K" => "bg_engr.png",
             "Graffity" => "bg_graf.png",
+            "Ginger supervisor" => "bg_cat_day.png",
+            "Tranquility" => "bg_cat_night.png",
             _ => null
         };
 
@@ -523,6 +567,377 @@ public partial class MainWindow : Window
         if (NocturnalKCheck != null) NocturnalKCheck.Opacity = _currentTheme == "Nocturnal K" ? 1 : 0;
         if (EngravingKCheck != null) EngravingKCheck.Opacity = _currentTheme == "Engraving K" ? 1 : 0;
         if (GraffityCheck != null) GraffityCheck.Opacity = _currentTheme == "Graffity" ? 1 : 0;
+        if (GingerSupervisorCheck != null) GingerSupervisorCheck.Opacity = _currentTheme == "Ginger supervisor" ? 1 : 0;
+        if (TranquilityCheck != null) TranquilityCheck.Opacity = _currentTheme == "Tranquility" ? 1 : 0;
+        if (PaperCheck != null) PaperCheck.Opacity = _currentTheme == "Paper" ? 1 : 0;
+        if (MintIceCreamCheck != null) MintIceCreamCheck.Opacity = _currentTheme == "Mint ice cream" ? 1 : 0;
+    }
+
+
+    // === Audio Player Controls ===
+    private void AudioButton_Click(object sender, RoutedEventArgs e)
+    {
+        _showingAudio = !_showingAudio;
+
+        if (_showingAudio)
+        {
+            if (_showingThemes)
+            {
+                _showingThemes = false;
+                ThemesView.Visibility = Visibility.Collapsed;
+            }
+            if (OpacitySliderBorder != null) OpacitySliderBorder.Visibility = Visibility.Collapsed;
+
+            TasksView.Visibility = Visibility.Collapsed;
+            AudioView.Visibility = Visibility.Visible;
+            HeaderTitle.Visibility = Visibility.Visible;
+            HeaderTitle.Text = "Focus Music";
+            TimerText.Visibility = Visibility.Collapsed;
+            TaskCounter.Visibility = Visibility.Collapsed;
+            BuildAudioTrackList();
+        }
+        else
+        {
+            AudioView.Visibility = Visibility.Collapsed;
+            TasksView.Visibility = Visibility.Visible;
+
+            if (_isUrgentMode)
+            {
+                HeaderTitle.Visibility = Visibility.Collapsed;
+                TaskCounter.Visibility = Visibility.Collapsed;
+                TimerText.Visibility = Visibility.Visible;
+                UpdateTimerDisplay();
+            }
+            else
+            {
+                HeaderTitle.Visibility = Visibility.Visible;
+                HeaderTitle.Text = "ADHD to-do";
+                TaskCounter.Visibility = Visibility.Visible;
+                TimerText.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        UpdateHeaderIcons();
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            AnimateScrollBars(IsMouseOver || MainBorder?.IsMouseOver == true);
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private void AudioPlayPause_Click(object sender, MouseButtonEventArgs e)
+    {
+        _audioService.TogglePlay();
+    }
+
+    private void AudioPrevButton_Click(object sender, RoutedEventArgs e)
+    {
+        _audioService.Prev();
+    }
+
+    private void AudioNextButton_Click(object sender, RoutedEventArgs e)
+    {
+        _audioService.Next();
+    }
+
+    private void AudioTimelineSlider_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed && sender is Slider slider)
+        {
+            _isDraggingAudioSlider = true;
+            slider.CaptureMouse();
+            UpdateTimelineSliderFromMouse(slider, e.GetPosition(slider));
+            _audioService.Seek(slider.Value);
+            e.Handled = true;
+        }
+    }
+
+    private void AudioTimelineSlider_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_isDraggingAudioSlider && sender is Slider slider && e.LeftButton == MouseButtonState.Pressed)
+        {
+            UpdateTimelineSliderFromMouse(slider, e.GetPosition(slider));
+            e.Handled = true;
+        }
+    }
+
+    private void AudioTimelineSlider_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_isDraggingAudioSlider && sender is Slider slider)
+        {
+            UpdateTimelineSliderFromMouse(slider, e.GetPosition(slider));
+            _audioService.Seek(slider.Value);
+            _isDraggingAudioSlider = false;
+            slider.ReleaseMouseCapture();
+            e.Handled = true;
+        }
+    }
+
+    private void UpdateTimelineSliderFromMouse(Slider slider, Point p)
+    {
+        double width = slider.ActualWidth;
+        if (width <= 0) return;
+        double ratio = Math.Clamp((p.X - 5.0) / Math.Max(1.0, width - 10.0), 0.0, 1.0);
+        double newVal = slider.Minimum + ratio * (slider.Maximum - slider.Minimum);
+        slider.Value = newVal;
+        if (AudioCurrentTimeText != null)
+        {
+            var ts = TimeSpan.FromSeconds(newVal);
+            AudioCurrentTimeText.Text = ts.ToString(@"mm\:ss");
+        }
+    }
+
+    private void AudioTimelineSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isDraggingAudioSlider && AudioCurrentTimeText != null)
+        {
+            var ts = TimeSpan.FromSeconds(e.NewValue);
+            AudioCurrentTimeText.Text = ts.ToString(@"mm\:ss");
+        }
+    }
+
+    private void AudioVolumeSlider_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed && sender is Slider slider)
+        {
+            _isDraggingVolumeSlider = true;
+            slider.CaptureMouse();
+            UpdateVolumeSliderFromMouse(slider, e.GetPosition(slider));
+            e.Handled = true;
+        }
+    }
+
+    private void AudioVolumeSlider_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_isDraggingVolumeSlider && sender is Slider slider && e.LeftButton == MouseButtonState.Pressed)
+        {
+            UpdateVolumeSliderFromMouse(slider, e.GetPosition(slider));
+            e.Handled = true;
+        }
+    }
+
+    private void AudioVolumeSlider_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_isDraggingVolumeSlider && sender is Slider slider)
+        {
+            _isDraggingVolumeSlider = false;
+            slider.ReleaseMouseCapture();
+            e.Handled = true;
+        }
+    }
+
+    private void UpdateVolumeSliderFromMouse(Slider slider, Point p)
+    {
+        double width = slider.ActualWidth;
+        if (width <= 0) return;
+        double ratio = Math.Clamp((p.X - 5.0) / Math.Max(1.0, width - 10.0), 0.0, 1.0);
+        double newValue = slider.Minimum + ratio * (slider.Maximum - slider.Minimum);
+        slider.Value = Math.Round(newValue, 2);
+    }
+
+    private void AudioVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_audioService != null)
+        {
+            if (_audioService.IsMuted && e.NewValue > 0.01)
+            {
+                _audioService.ToggleMute();
+            }
+            _audioService.SetVolume(e.NewValue);
+        }
+
+        if (AudioVolumePercentText != null)
+        {
+            int pct = (int)Math.Round(e.NewValue * 100);
+            AudioVolumePercentText.Text = $"{pct}%";
+            AudioVolumePercentText.Opacity = 1.0;
+        }
+
+        if (AudioVolumeIconPath != null)
+        {
+            bool isZero = e.NewValue <= 0.01;
+            bool isMuted = (_audioService?.IsMuted == true) || isZero;
+            AudioVolumeIconPath.Data = (StreamGeometry)FindResource(isMuted ? "VolumeXIcon" : "Volume2Icon");
+        }
+    }
+
+    private void AudioMuteButton_Click(object sender, RoutedEventArgs e)
+    {
+        _audioService?.ToggleMute();
+        bool isMuted = _audioService?.IsMuted == true;
+        if (AudioVolumeIconPath != null)
+        {
+            AudioVolumeIconPath.Data = (StreamGeometry)FindResource(isMuted ? "VolumeXIcon" : "Volume2Icon");
+        }
+        if (AudioVolumePercentText != null && AudioVolumeSlider != null)
+        {
+            if (isMuted)
+            {
+                AudioVolumePercentText.Text = "0%";
+                AudioVolumePercentText.Opacity = 0.5;
+            }
+            else
+            {
+                int pct = (int)Math.Round(AudioVolumeSlider.Value * 100);
+                AudioVolumePercentText.Text = $"{pct}%";
+                AudioVolumePercentText.Opacity = 1.0;
+            }
+        }
+    }
+
+    private void Audio_StateChanged(bool isPlaying)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (AudioPlayPauseIcon != null)
+            {
+                if (isPlaying)
+                {
+                    AudioPlayPauseIcon.Data = (StreamGeometry)FindResource("PauseIcon");
+                    AudioPlayPauseIcon.Fill = Brushes.White;
+                    AudioPlayPauseIcon.Stroke = null;
+                    AudioPlayPauseIcon.StrokeThickness = 0;
+                    AudioPlayPauseIcon.Margin = new Thickness(0);
+                }
+                else
+                {
+                    AudioPlayPauseIcon.Data = (StreamGeometry)FindResource("PlayIcon");
+                    AudioPlayPauseIcon.Fill = Brushes.White;
+                    AudioPlayPauseIcon.Stroke = null;
+                    AudioPlayPauseIcon.StrokeThickness = 0;
+                    AudioPlayPauseIcon.Margin = new Thickness(2, 0, 0, 0);
+                }
+            }
+            BuildAudioTrackList();
+        });
+    }
+
+    private void Audio_TrackChanged(Models.AudioTrack track)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (AudioTrackTitleText != null) AudioTrackTitleText.Text = track.Title;
+            if (AudioTotalTimeText != null) AudioTotalTimeText.Text = track.Duration;
+            if (AudioTimelineSlider != null)
+            {
+                AudioTimelineSlider.Maximum = track.DurationSeconds;
+                AudioTimelineSlider.Value = 0;
+            }
+            if (AudioCurrentTimeText != null) AudioCurrentTimeText.Text = "00:00";
+            BuildAudioTrackList();
+        });
+    }
+
+    private void Audio_PositionChanged(double currentSec, double totalSec)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (!_isDraggingAudioSlider && AudioTimelineSlider != null)
+            {
+                AudioTimelineSlider.Maximum = totalSec > 0 ? totalSec : 300;
+                AudioTimelineSlider.Value = currentSec;
+                if (AudioCurrentTimeText != null)
+                {
+                    var ts = TimeSpan.FromSeconds(currentSec);
+                    AudioCurrentTimeText.Text = ts.ToString(@"mm\:ss");
+                }
+            }
+        });
+    }
+
+    private void BuildAudioTrackList()
+    {
+        if (AudioTracksStackPanel == null) return;
+        AudioTracksStackPanel.Children.Clear();
+
+        var current = _audioService.CurrentTrack;
+
+        foreach (var track in _audioService.Tracks)
+        {
+            var isCurrent = current != null && current.Id == track.Id;
+
+            var border = new Border
+            {
+                Background = isCurrent
+                    ? (Brush)FindResource("bg/soft")
+                    : (Brush)FindResource("bg/task"),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(8, 6, 8, 6),
+                MinHeight = 34,
+                Margin = new Thickness(0, 0, 0, 6),
+                Cursor = Cursors.Hand,
+                Tag = track
+            };
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var textStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+
+            var titleBlock = new TextBlock
+            {
+                Text = track.Title,
+                Foreground = (Brush)FindResource("fg/primary"),
+                FontFamily = (FontFamily)FindResource("FontRegular"),
+                FontSize = 13,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+
+            textStack.Children.Add(titleBlock);
+
+            var rightStack = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            if (isCurrent && _audioService.IsPlaying)
+            {
+                var waveIcon = new System.Windows.Shapes.Path
+                {
+                    Data = (StreamGeometry)FindResource("AudioWaveformIcon"),
+                    Stroke = (Brush)FindResource("bg/checkbox-filled"),
+                    StrokeThickness = 1.5,
+                    Width = 14,
+                    Height = 14,
+                    Stretch = Stretch.Uniform,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                rightStack.Children.Add(waveIcon);
+            }
+            else
+            {
+                var playIcon = new System.Windows.Shapes.Path
+                {
+                    Data = (StreamGeometry)FindResource("PlayIcon"),
+                    Stroke = (Brush)FindResource("fg/soft"),
+                    StrokeThickness = 1.5,
+                    Fill = Brushes.Transparent,
+                    Width = 12,
+                    Height = 12,
+                    Stretch = Stretch.Uniform,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                rightStack.Children.Add(playIcon);
+            }
+
+            Grid.SetColumn(textStack, 0);
+            Grid.SetColumn(rightStack, 1);
+            grid.Children.Add(textStack);
+            grid.Children.Add(rightStack);
+
+            border.Child = grid;
+
+            border.MouseLeftButtonDown += (s, e) =>
+            {
+                if (border.Tag is Models.AudioTrack t)
+                {
+                    _audioService.SelectTrack(t);
+                }
+            };
+
+            AudioTracksStackPanel.Children.Add(border);
+        }
     }
 
     // === Controls ===
@@ -598,6 +1013,7 @@ public partial class MainWindow : Window
 
         if (_showingThemes)
         {
+            if (AudioView != null) AudioView.Visibility = Visibility.Collapsed;
             TasksView.Visibility = Visibility.Collapsed;
             ThemesView.Visibility = Visibility.Visible;
             HeaderTitle.Visibility = Visibility.Visible;
@@ -606,8 +1022,20 @@ public partial class MainWindow : Window
             TaskCounter.Visibility = Visibility.Collapsed;
             UpdateThemeCheckmarks();
         }
+        else if (_showingAudio)
+        {
+            ThemesView.Visibility = Visibility.Collapsed;
+            TasksView.Visibility = Visibility.Collapsed;
+            if (AudioView != null) AudioView.Visibility = Visibility.Visible;
+            HeaderTitle.Visibility = Visibility.Visible;
+            HeaderTitle.Text = "Focus Music";
+            TimerText.Visibility = Visibility.Collapsed;
+            TaskCounter.Visibility = Visibility.Collapsed;
+            BuildAudioTrackList();
+        }
         else if (_isUrgentMode)
         {
+            if (AudioView != null) AudioView.Visibility = Visibility.Collapsed;
             ThemesView.Visibility = Visibility.Collapsed;
             TasksView.Visibility = Visibility.Visible;
             HeaderTitle.Visibility = Visibility.Collapsed;
@@ -617,6 +1045,7 @@ public partial class MainWindow : Window
         }
         else
         {
+            if (AudioView != null) AudioView.Visibility = Visibility.Collapsed;
             ThemesView.Visibility = Visibility.Collapsed;
             TasksView.Visibility = Visibility.Visible;
             HeaderTitle.Visibility = Visibility.Visible;

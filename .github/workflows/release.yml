@@ -19,16 +19,26 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
-      - name: Publish
+      - name: Publish (Self-Contained)
         run: |
           cd TodoWidget
           dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ../publish
 
+      - name: Publish (Framework-Dependent / .NET 9)
+        run: |
+          cd TodoWidget
+          dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ../publish-net9
+
       - name: Zip
-        run: Compress-Archive -Path publish/TodoWidget.exe -DestinationPath TodoWidget-${{ github.ref_name }}.zip
+        run: |
+          Compress-Archive -Path publish/TodoWidget.exe -DestinationPath TodoWidget-${{ github.ref_name }}.zip
+          Compress-Archive -Path publish-net9/TodoWidget.exe -DestinationPath TodoWidget-net9.zip
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: TodoWidget-${{ github.ref_name }}.zip
+          files: |
+            publish/TodoWidget.exe
+            TodoWidget-${{ github.ref_name }}.zip
+            TodoWidget-net9.zip
           generate_release_notes: true

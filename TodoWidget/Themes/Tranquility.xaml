@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Tranquility Theme -->
+    <SolidColorBrush x:Key="bg/widget" Color="#191819"/>
+    <SolidColorBrush x:Key="bg/task" Color="#24211D"/>
+    <SolidColorBrush x:Key="fg/soft" Color="#4B4744"/>
+    <SolidColorBrush x:Key="bg/input" Color="#24211D"/>
+    <SolidColorBrush x:Key="bg/checkbox-empty" Color="#373127"/>
+    <SolidColorBrush x:Key="bg/checkbox-filled" Color="#D51518"/>
+    <SolidColorBrush x:Key="bg/button" Color="#D51518"/>
+    <SolidColorBrush x:Key="bg/soft" Color="#373127"/>
+    <SolidColorBrush x:Key="fg/primary" Color="#EEE6D3"/>
+    <SolidColorBrush x:Key="fg/secondary" Color="#69655D"/>
+    <SolidColorBrush x:Key="fg/danger" Color="#CE1418"/>
+    <SolidColorBrush x:Key="border/widget" Color="#2B2928"/>
+    <SolidColorBrush x:Key="HeaderIconColor" Color="#69655D"/>
+    <FontFamily x:Key="FontRegular">pack://application:,,,/Fonts/#Inter</FontFamily>
+    <FontFamily x:Key="FontSemiBold">pack://application:,,,/Fonts/#Inter SemiBold</FontFamily>
+    <BitmapImage x:Key="WidgetBackgroundImage" UriSource="pack://application:,,,/Images/bg_cat_night.png"/>
+
+</ResourceDictionary>

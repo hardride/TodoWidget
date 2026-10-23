@@ -1,0 +1,70 @@
+{
+  "version": 9,
+  "title": "Звуки природы и фокуса",
+  "updatedAt": "2026-10-23",
+  "tracks": [
+    {
+      "id": "track-nature",
+      "title": "Звуки природы",
+      "subtitle": "Живая запись пения лесных птиц и шелеста листвы",
+      "category": "Природа",
+      "duration": "02:08",
+      "durationSeconds": 128,
+      "url": "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/animals/birds.mp3"
+    },
+    {
+      "id": "track-campfire",
+      "title": "Костёр",
+      "subtitle": "Настоящее потрескивание дров и тепло огня",
+      "category": "Природа",
+      "duration": "03:22",
+      "durationSeconds": 202,
+      "url": "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/nature/campfire.mp3"
+    },
+    {
+      "id": "track-river",
+      "title": "Река",
+      "subtitle": "Настоящий горный ручей и журчание воды по камням",
+      "category": "Природа",
+      "duration": "04:03",
+      "durationSeconds": 243,
+      "url": "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/nature/river.mp3"
+    },
+    {
+      "id": "track-waterfall",
+      "title": "Водопад",
+      "subtitle": "Шум мощного водопада и водяная дымка",
+      "category": "Природа",
+      "duration": "00:34",
+      "durationSeconds": 34,
+      "url": "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/nature/waterfall.mp3"
+    },
+    {
+      "id": "track-metropolis",
+      "title": "Мегаполис",
+      "subtitle": "Живая запись городской улицы и трафика",
+      "category": "Город",
+      "duration": "02:25",
+      "durationSeconds": 145,
+      "url": "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/urban/busy-street.mp3"
+    },
+    {
+      "id": "track-office",
+      "title": "Офисный шум",
+      "subtitle": "Атмосфера рабочего офиса, стук клавиш и спокойный фон",
+      "category": "Фокус",
+      "duration": "02:02",
+      "durationSeconds": 122,
+      "url": "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/places/office.mp3"
+    },
+    {
+      "id": "track-brown-noise",
+      "title": "Коричневый шум",
+      "subtitle": "Глубокий броуновский шум для максимальной концентрации",
+      "category": "Шум",
+      "duration": "15:00",
+      "durationSeconds": 900,
+      "url": "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/noise/brown-noise.wav"
+    }
+  ]
+}

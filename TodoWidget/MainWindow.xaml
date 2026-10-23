@@ -37,6 +37,13 @@
         <StreamGeometry x:Key="PinOffIcon">M12 17v5 M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H7.89 M2 2 20 20 M9 9v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h11</StreamGeometry>
         <StreamGeometry x:Key="TargetIcon">M 12,3.5 A 8.5,8.5 0 1 0 12,20.5 A 8.5,8.5 0 1 0 12,3.5 M 12,11 A 1,1 0 1 0 12,13 A 1,1 0 1 0 12,11</StreamGeometry>
         <StreamGeometry x:Key="TrendingUpDownIcon">M 14.828,14.828 L 21,21 M 21,16 v 5 h -5 M 21,3 l -9,9 -4,-4 -6,6 M 21,8 V 3 h -5</StreamGeometry>
+        <StreamGeometry x:Key="AudioWaveformIcon">M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2</StreamGeometry>
+        <StreamGeometry x:Key="PlayIcon">M 5,5 A 2,2 0 0 1 8.008,3.272 L 20.005,10.27 A 2,2 0 0 1 20.008,13.728 L 8.008,20.728 A 2,2 0 0 1 5,19 Z</StreamGeometry>
+        <StreamGeometry x:Key="PauseIcon">M 5,4 A 1,1 0 0 1 6,3 H 9 A 1,1 0 0 1 10,4 V 20 A 1,1 0 0 1 9,21 H 6 A 1,1 0 0 1 5,20 Z M 14,4 A 1,1 0 0 1 15,3 H 18 A 1,1 0 0 1 19,4 V 20 A 1,1 0 0 1 18,21 H 15 A 1,1 0 0 1 14,20 Z</StreamGeometry>
+        <StreamGeometry x:Key="SkipBackIcon">M 3,4 V 20 M 17.971,4.285 A 2,2 0 0 1 21,6 V 18 A 2,2 0 0 1 17.971,19.715 L 7.974,13.717 A 2,2 0 0 1 7.971,10.285 Z</StreamGeometry>
+        <StreamGeometry x:Key="SkipForwardIcon">M 21,4 V 20 M 6.029,4.285 A 2,2 0 0 0 3,6 V 18 A 2,2 0 0 0 6.029,19.715 L 16.026,13.717 A 2,2 0 0 0 16.029,10.285 Z</StreamGeometry>
+        <StreamGeometry x:Key="Volume2Icon">M 11,4.702 A 0.705,0.705 0 0 0 9.797,4.204 L 6.413,7.587 A 1.4,1.4 0 0 1 5.416,8 H 3 A 1,1 0 0 0 2,9 V 15 A 1,1 0 0 0 3,16 H 5.416 A 1.4,1.4 0 0 1 6.413,16.413 L 9.796,19.797 A 0.705,0.705 0 0 0 11,19.298 Z M 16,9 A 5,5 0 0 1 16,15 M 19.364,18.364 A 9,9 0 0 0 19.364,5.636</StreamGeometry>
+        <StreamGeometry x:Key="VolumeXIcon">M 11,4.702 A 0.705,0.705 0 0 0 9.797,4.204 L 6.413,7.587 A 1.4,1.4 0 0 1 5.416,8 H 3 A 1,1 0 0 0 2,9 V 15 A 1,1 0 0 0 3,16 H 5.416 A 1.4,1.4 0 0 1 6.413,16.413 L 9.796,19.797 A 0.705,0.705 0 0 0 11,19.298 Z M 16.5,14.5 L 21.5,9.5 M 16.5,9.5 L 21.5,14.5</StreamGeometry>
 
         <!-- Icon button style -->
         <Style x:Key="IconButtonStyle" TargetType="Button">
@@ -161,6 +168,68 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Modern Audio Slider Style -->
+        <Style x:Key="AudioSliderThumbStyle" TargetType="Thumb">
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="thumbBorder" Width="10" Height="10" CornerRadius="5" Background="{DynamicResource fg/primary}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="thumbBorder" Property="Width" Value="12"/>
+                                <Setter TargetName="thumbBorder" Property="Height" Value="12"/>
+                                <Setter TargetName="thumbBorder" Property="CornerRadius" Value="6"/>
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="thumbBorder" Property="Background" Value="{DynamicResource bg/checkbox-filled}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ModernAudioSliderStyle" TargetType="Slider">
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="IsMoveToPointEnabled" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid VerticalAlignment="Center" Height="16" Background="Transparent">
+                            <Border Height="4" CornerRadius="2" Background="{DynamicResource bg/checkbox-empty}" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="4" CornerRadius="2" Background="{DynamicResource bg/checkbox-filled}"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent" Height="16"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource AudioSliderThumbStyle}"/>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -189,6 +258,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -197,23 +267,28 @@
                         <TextBlock Name="TaskCounter" Text="0/0" Foreground="{DynamicResource fg/secondary}" FontFamily="{DynamicResource FontRegular}" FontSize="14" VerticalAlignment="Center" Margin="10,0,0,0"/>
                     </StackPanel>
 
+                    <!-- Audio Player (audio-waveform) -->
+                    <Button x:Name="AudioButton" Grid.Column="1" Style="{StaticResource IconButtonStyle}" Click="AudioButton_Click" ToolTip="Музыка для концентрации">
+                        <Path x:Name="AudioIconPath" Data="{StaticResource AudioWaveformIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="18" Height="18" Stretch="Uniform"/>
+                    </Button>
+
                     <!-- Theme (paintbrush) -->
-                    <Button x:Name="ThemeButton" Grid.Column="1" Style="{StaticResource IconButtonStyle}" Click="ThemeButton_Click">
+                    <Button x:Name="ThemeButton" Grid.Column="2" Style="{StaticResource IconButtonStyle}" Click="ThemeButton_Click">
                         <Path x:Name="ThemeIconPath" Data="{StaticResource PaintbrushIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="18" Height="18" Stretch="Uniform"/>
                     </Button>
 
                     <!-- Opacity (blend) -->
-                    <Button x:Name="OpacityButton" Grid.Column="2" Style="{StaticResource IconButtonStyle}" Click="OpacityButton_Click">
+                    <Button x:Name="OpacityButton" Grid.Column="3" Style="{StaticResource IconButtonStyle}" Click="OpacityButton_Click">
                         <Path x:Name="OpacityIconPath" Data="{StaticResource BlendIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="18" Height="18" Stretch="Uniform"/>
                     </Button>
 
                     <!-- Pin -->
-                    <Button x:Name="PinButton" Grid.Column="3" Style="{StaticResource IconButtonStyle}" Click="PinButton_Click">
+                    <Button x:Name="PinButton" Grid.Column="4" Style="{StaticResource IconButtonStyle}" Click="PinButton_Click">
                         <Path x:Name="PinIconPath" Data="{StaticResource PinIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="18" Height="18" Stretch="Uniform"/>
                     </Button>
 
                     <!-- Minimize to tray -->
-                    <Button x:Name="CloseButton" Grid.Column="4" Style="{StaticResource IconButtonStyle}" Click="CloseButton_Click">
+                    <Button x:Name="CloseButton" Grid.Column="5" Style="{StaticResource IconButtonStyle}" Click="CloseButton_Click">
                         <Path x:Name="CloseIconPath" Data="{StaticResource Minimize2Icon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="18" Height="18" Stretch="Uniform"/>
                     </Button>
                 </Grid>
@@ -961,8 +1036,156 @@
                             <Path x:Name="GraffityCheck" Grid.Column="1" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource bg/checkbox-filled}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Opacity="0"/>
                         </Grid>
                     </Border>
+
+                    <!-- Ginger supervisor theme -->
+                    <Border x:Name="GingerSupervisorThemeItem" Background="{DynamicResource bg/task}" CornerRadius="8" Padding="12,10" Margin="0,0,0,6" Cursor="Hand" MouseLeftButtonDown="GingerSupervisorTheme_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Ginger supervisor" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontRegular}" FontSize="14" VerticalAlignment="Center"/>
+                            <Path x:Name="GingerSupervisorCheck" Grid.Column="1" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource bg/checkbox-filled}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Opacity="0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Tranquility theme -->
+                    <Border x:Name="TranquilityThemeItem" Background="{DynamicResource bg/task}" CornerRadius="8" Padding="8,6" MinHeight="34" Margin="0,0,0,6" Cursor="Hand" MouseLeftButtonDown="TranquilityTheme_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Tranquility" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontRegular}" FontSize="14" VerticalAlignment="Center"/>
+                            <Path x:Name="TranquilityCheck" Grid.Column="1" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource bg/checkbox-filled}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Opacity="0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Paper theme -->
+                    <Border x:Name="PaperThemeItem" Background="{DynamicResource bg/task}" CornerRadius="8" Padding="8,6" MinHeight="34" Margin="0,0,0,6" Cursor="Hand" MouseLeftButtonDown="PaperTheme_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Paper" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontRegular}" FontSize="14" VerticalAlignment="Center"/>
+                            <Path x:Name="PaperCheck" Grid.Column="1" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource bg/checkbox-filled}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Opacity="0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Mint ice cream theme -->
+                    <Border x:Name="MintIceCreamThemeItem" Background="{DynamicResource bg/task}" CornerRadius="8" Padding="8,6" MinHeight="34" Margin="0,0,0,6" Cursor="Hand" MouseLeftButtonDown="MintIceCreamTheme_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Mint ice cream" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontRegular}" FontSize="14" VerticalAlignment="Center"/>
+                            <Path x:Name="MintIceCreamCheck" Grid.Column="1" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource bg/checkbox-filled}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Opacity="0"/>
+                        </Grid>
+                    </Border>
                 </StackPanel>
                 </ScrollViewer>
+            </Border>
+
+            <!-- === Audio Player View (hidden) === -->
+            <Border x:Name="AudioView" Grid.Row="2" Grid.RowSpan="2" Visibility="Collapsed" Padding="12,10,4,12">
+                <Border.Resources>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Effect" Value="{DynamicResource TextGlowEffect}"/>
+                    </Style>
+                </Border.Resources>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Player Card -->
+                    <Border Grid.Row="0" Background="{DynamicResource bg/task}" CornerRadius="10" Padding="12,10" Margin="0,0,8,8">
+                        <StackPanel>
+                            <!-- Track Info Header -->
+                            <StackPanel Margin="0,0,0,8">
+                                <TextBlock x:Name="AudioTrackTitleText" Text="Звуки природы" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontSemiBold}" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+
+                            <!-- Hidden Timeline Slider & Time Labels (ambient background sounds loop continuously without seeking) -->
+                            <Slider x:Name="AudioTimelineSlider" Visibility="Collapsed" Style="{StaticResource ModernAudioSliderStyle}"/>
+                            <TextBlock x:Name="AudioCurrentTimeText" Visibility="Collapsed"/>
+                            <TextBlock x:Name="AudioTotalTimeText" Visibility="Collapsed"/>
+
+                            <!-- Player Controls -->
+                            <Grid Margin="0,2,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Left: Volume mute button + Volume slider + Volume percentage -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button x:Name="AudioMuteButton" Style="{StaticResource IconButtonStyle}" Click="AudioMuteButton_Click" ToolTip="Звук вкл/выкл" Margin="0,0,2,0" Padding="3">
+                                        <Path x:Name="AudioVolumeIconPath" Data="{StaticResource Volume2Icon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="14" Height="14" Stretch="Uniform"/>
+                                    </Button>
+                                    <Slider x:Name="AudioVolumeSlider" Width="42" Minimum="0" Maximum="1" Value="0.7"
+                                            ValueChanged="AudioVolumeSlider_ValueChanged"
+                                            PreviewMouseDown="AudioVolumeSlider_PreviewMouseDown"
+                                            PreviewMouseMove="AudioVolumeSlider_PreviewMouseMove"
+                                            PreviewMouseUp="AudioVolumeSlider_PreviewMouseUp"
+                                            VerticalAlignment="Center" Cursor="Hand"
+                                            Style="{StaticResource ModernAudioSliderStyle}"/>
+                                    <TextBlock x:Name="AudioVolumePercentText" Text="70%" Foreground="{DynamicResource fg/soft}" FontFamily="{DynamicResource FontRegular}" FontSize="10" Margin="3,0,0,0" VerticalAlignment="Center" Width="24" Typography.NumeralAlignment="Tabular"/>
+                                </StackPanel>
+
+                                <!-- Center Controls: Prev, Play/Pause, Next -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Button x:Name="AudioPrevButton" Style="{StaticResource IconButtonStyle}" Click="AudioPrevButton_Click" ToolTip="Предыдущий" Padding="4" Margin="0,0,2,0">
+                                        <Path Data="{StaticResource SkipBackIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.75" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="14" Height="14" Stretch="Uniform"/>
+                                    </Button>
+
+                                    <!-- Big Play/Pause Button -->
+                                    <Border x:Name="AudioPlayPauseBorder" Width="32" Height="32" CornerRadius="16" Background="{DynamicResource bg/button}" Cursor="Hand" MouseLeftButtonDown="AudioPlayPause_Click" ToolTip="Play / Pause">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Opacity" Value="0.85"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Path x:Name="AudioPlayPauseIcon" Data="{StaticResource PlayIcon}" Fill="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="2,0,0,0" Width="14" Height="14" Stretch="Uniform"/>
+                                    </Border>
+
+                                    <Button x:Name="AudioNextButton" Style="{StaticResource IconButtonStyle}" Click="AudioNextButton_Click" ToolTip="Следующий" Padding="4" Margin="2,0,0,0">
+                                        <Path Data="{StaticResource SkipForwardIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.75" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="14" Height="14" Stretch="Uniform"/>
+                                    </Button>
+                                </StackPanel>
+
+                                <!-- Right: Spacer / Equalizer badge -->
+                                <Border Grid.Column="2" Width="90" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Track List / Playlist -->
+                    <Border Grid.Row="1">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Медитация и фокус" Foreground="{DynamicResource fg/secondary}" FontFamily="{DynamicResource FontSemiBold}" FontSize="12" Margin="4,2,0,6"/>
+
+                            <ScrollViewer Grid.Row="1" x:Name="AudioScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Style="{StaticResource SlimScrollViewerStyle}" Padding="0,0,8,0">
+                                <StackPanel x:Name="AudioTracksStackPanel">
+                                    <!-- Populated in code-behind -->
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+                </Grid>
             </Border>
         </Grid>
     </Border>

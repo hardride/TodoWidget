@@ -55,19 +55,19 @@ public class UpdateService
 
             if (latest > current)
             {
-                var url = doc.RootElement.GetProperty("html_url").GetString();
                 var displayTag = tag.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? tag : $"v{tag}";
                 var result = MessageBox.Show(
-                    $"ADHD to-do обновился и теперь тебя ждёт {displayTag}!\n\nОткрыть страницу загрузки?",
+                    $"ADHD to-do обновился и теперь тебя ждёт {displayTag}!\n\nСкачать быстрое обновление (~6 МБ)?",
                     "Обновление доступно",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Information);
 
-                if (result == MessageBoxResult.Yes && url != null)
+                if (result == MessageBoxResult.Yes)
                 {
+                    var downloadUrl = $"https://github.com/{Repo}/releases/latest/download/TodoWidget-net9.zip";
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                     {
-                        FileName = url,
+                        FileName = downloadUrl,
                         UseShellExecute = true
                     });
                 }
