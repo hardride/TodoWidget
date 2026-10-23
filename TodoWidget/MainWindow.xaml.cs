@@ -1129,6 +1129,8 @@ public partial class MainWindow : Window
 
         if (LblAboutHeader != null) LblAboutHeader.Text = LocalizationService.Get("AboutHeader", lang);
         if (LblAboutDesc != null) LblAboutDesc.Text = LocalizationService.Get("AboutDesc", lang);
+        var currentVer = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.1.0";
+        if (LblAboutVersion != null) LblAboutVersion.Text = $"TodoWidget v{currentVer}";
 
         if (WatermarkText != null) WatermarkText.Text = LocalizationService.Get("AddTaskPlaceholder", lang);
         if (ClearCompletedButton != null) ClearCompletedButton.Text = LocalizationService.Get("ClearAll", lang);

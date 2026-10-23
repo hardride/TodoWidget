@@ -663,7 +663,7 @@
                             <TextBlock x:Name="LblAboutHeader" Text="About" Foreground="{DynamicResource fg/secondary}" FontFamily="{DynamicResource FontSemiBold}" FontSize="11" Margin="2,4,0,6"/>
                             <Border Background="Transparent" Padding="4,4">
                                 <StackPanel>
-                                    <TextBlock Text="TodoWidget v1.1.0" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontSemiBold}" FontSize="12" Margin="0,0,0,2"/>
+                                    <TextBlock x:Name="LblAboutVersion" Text="TodoWidget v1.1.0" Foreground="{DynamicResource fg/primary}" FontFamily="{DynamicResource FontSemiBold}" FontSize="12" Margin="0,0,0,2"/>
                                     <TextBlock x:Name="LblAboutDesc" Text="Минималистичный виджет задач для концентрации." Foreground="{DynamicResource fg/secondary}" FontFamily="{DynamicResource FontRegular}" FontSize="11" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
