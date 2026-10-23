@@ -20,6 +20,24 @@ public class SettingsService
         set { _settings.Opacity = value; Save(); }
     }
 
+    public bool DimOnLostFocus
+    {
+        get => _settings.DimOnLostFocus;
+        set { _settings.DimOnLostFocus = value; Save(); }
+    }
+
+    public bool HideCompletedTasks
+    {
+        get => _settings.HideCompletedTasks;
+        set { _settings.HideCompletedTasks = value; Save(); }
+    }
+
+    public string Language
+    {
+        get => string.IsNullOrEmpty(_settings.Language) ? "en" : _settings.Language;
+        set { _settings.Language = value; Save(); }
+    }
+
     public bool IsPinned
     {
         get => _settings.IsPinned;
@@ -187,6 +205,9 @@ public class SettingsService
     {
         public string Theme { get; set; } = "Dark";
         public double Opacity { get; set; } = 1.0;
+        public bool DimOnLostFocus { get; set; } = true;
+        public bool HideCompletedTasks { get; set; } = true;
+        public string Language { get; set; } = "en";
         public bool IsPinned { get; set; } = true;
         public double Height { get; set; } = 480;
         public int DeadlineSlot { get; set; } = 3;

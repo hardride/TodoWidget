@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
 using TodoWidget.Models;
@@ -9,12 +11,14 @@ namespace TodoWidget.Services;
 
 public class AudioService
 {
-    private const string DefaultPlaylistUrl = "https://raw.githubusercontent.com/hardride/TodoWidget/master/playlist.json";
+    private const string DefaultPlaylistUrl = "https://cdn.jsdelivr.net/gh/hardride/TodoWidget@master/playlist.json";
 
     private readonly MediaPlayer _mediaPlayer = new();
     private readonly DispatcherTimer _timer = new();
-    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(15) };
     private readonly string _musicFolder;
+    private readonly string _cacheFolder;
+    private readonly ConcurrentDictionary<string, Task<string?>> _activeDownloads = new();
 
     private List<AudioTrack> _tracks = new();
     private int _currentIndex = 0;
@@ -40,32 +44,26 @@ public class AudioService
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         _musicFolder = Path.Combine(appData, "TodoWidget", "Music");
+        _cacheFolder = Path.Combine(appData, "TodoWidget", "Cache");
 
-        // Clean up any old downloaded audio files on user's disk
+        try
+        {
+            Directory.CreateDirectory(_cacheFolder);
+        }
+        catch { }
+
+        // Clean up any old downloaded audio files from legacy generator
         SoundGenerator.EnsureDefaultTracksExist(_musicFolder);
 
-        // Load tracks immediately from local playlist.json or built-in defaults (streaming URLs)
+        // Load tracks immediately from local playlist.json or built-in defaults (streaming/CDN URLs)
         LoadInitialTracks();
 
         _timer.Interval = TimeSpan.FromMilliseconds(250);
         _timer.Tick += Timer_Tick;
 
         _mediaPlayer.MediaEnded += MediaPlayer_MediaEnded;
-        _mediaPlayer.MediaOpened += (s, e) =>
-        {
-            if (_mediaPlayer.NaturalDuration.HasTimeSpan)
-            {
-                var dur = _mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds;
-                if (dur > 0 && CurrentTrack != null)
-                {
-                    CurrentTrack.DurationSeconds = dur;
-                    int m = (int)(dur / 60);
-                    int sec = (int)(dur % 60);
-                    CurrentTrack.Duration = $"{m:D2}:{sec:D2}";
-                    PositionChanged?.Invoke(_virtualPosition, dur);
-                }
-            }
-        };
+        _mediaPlayer.MediaOpened += MediaPlayer_MediaOpened;
+        _mediaPlayer.MediaFailed += MediaPlayer_MediaFailed;
         _mediaPlayer.Volume = _volume;
 
         if (_tracks.Count > 0)
@@ -73,8 +71,234 @@ public class AudioService
             PrepareTrack(0);
         }
 
-        // Asynchronously check remote playlist from GitHub in the background
-        Task.Run(async () => await SyncRemotePlaylistAsync());
+        // Asynchronously check remote playlist and pre-cache audio files in the background
+        Task.Run(async () =>
+        {
+            await SyncRemotePlaylistAsync();
+            await PrecacheAllTracksAsync();
+        });
+    }
+
+    public static string NormalizeAudioUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return url ?? string.Empty;
+
+        // Convert raw.githubusercontent.com to global CDN cdn.jsdelivr.net (faster, not blocked by RKN/ISPs)
+        // Format: https://raw.githubusercontent.com/{user}/{repo}/{branch}/{path...}
+        // Becomes: https://cdn.jsdelivr.net/gh/{user}/{repo}@{branch}/{path...}
+        const string rawPrefix = "https://raw.githubusercontent.com/";
+        if (url.StartsWith(rawPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            string path = url.Substring(rawPrefix.Length);
+            string[] parts = path.Split('/', 3);
+            if (parts.Length == 3)
+            {
+                string user = parts[0];
+                string repo = parts[1];
+                string rest = parts[2];
+                int branchSlash = rest.IndexOf('/');
+                if (branchSlash > 0)
+                {
+                    string branch = rest.Substring(0, branchSlash);
+                    string file = rest.Substring(branchSlash + 1);
+                    return $"https://cdn.jsdelivr.net/gh/{user}/{repo}@{branch}/{file}";
+                }
+            }
+        }
+
+        return url;
+    }
+
+    private string GetTrackFileName(AudioTrack track)
+    {
+        string ext = ".mp3";
+        try
+        {
+            if (!string.IsNullOrEmpty(track.Url))
+            {
+                var uri = new Uri(NormalizeAudioUrl(track.Url));
+                string candidateExt = Path.GetExtension(uri.AbsolutePath);
+                if (!string.IsNullOrEmpty(candidateExt) && candidateExt.Length <= 5)
+                {
+                    ext = candidateExt.ToLowerInvariant();
+                }
+            }
+        }
+        catch { }
+
+        string safeId = string.Concat(track.Id.Split(Path.GetInvalidFileNameChars()));
+        if (string.IsNullOrWhiteSpace(safeId)) safeId = Guid.NewGuid().ToString("N");
+        return $"{safeId}{ext}";
+    }
+
+    public bool IsTrackCached(AudioTrack track, out string cachedPath)
+    {
+        cachedPath = Path.Combine(_cacheFolder, GetTrackFileName(track));
+        try
+        {
+            if (File.Exists(cachedPath))
+            {
+                var fi = new FileInfo(cachedPath);
+                if (fi.Length > 4096)
+                {
+                    return true;
+                }
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    public Task<string?> EnsureTrackCachedAsync(AudioTrack track, CancellationToken ct = default)
+    {
+        if (IsTrackCached(track, out string existingPath))
+        {
+            return Task.FromResult<string?>(existingPath);
+        }
+
+        if (string.IsNullOrWhiteSpace(track.Url)) return Task.FromResult<string?>(null);
+
+        string targetPath = Path.Combine(_cacheFolder, GetTrackFileName(track));
+        string url = NormalizeAudioUrl(track.Url);
+
+        return _activeDownloads.GetOrAdd(track.Id, _ => DownloadTrackAsync(track, targetPath, url, ct));
+    }
+
+    private async Task<string?> DownloadTrackAsync(AudioTrack track, string targetPath, string url, CancellationToken ct)
+    {
+        string tempPath = targetPath + ".tmp";
+        try
+        {
+            Directory.CreateDirectory(_cacheFolder);
+            using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            await using (var stream = await response.Content.ReadAsStreamAsync(ct))
+            await using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+            {
+                await stream.CopyToAsync(fileStream, ct);
+            }
+
+            if (File.Exists(tempPath) && new FileInfo(tempPath).Length > 4096)
+            {
+                if (File.Exists(targetPath))
+                {
+                    try { File.Delete(targetPath); } catch { }
+                }
+                File.Move(tempPath, targetPath);
+                return targetPath;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to cache track {track.Title}: {ex.Message}");
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+            }
+            catch { }
+            _activeDownloads.TryRemove(track.Id, out _);
+        }
+
+        return null;
+    }
+
+    private async Task PrecacheAllTracksAsync()
+    {
+        var list = _tracks.ToList();
+        foreach (var track in list)
+        {
+            try
+            {
+                if (!IsTrackCached(track, out _))
+                {
+                    await EnsureTrackCachedAsync(track);
+                    await Task.Delay(1000);
+                }
+            }
+            catch { }
+        }
+    }
+
+    private void OpenTrack(AudioTrack track)
+    {
+        if (IsTrackCached(track, out string localPath))
+        {
+            try
+            {
+                _mediaPlayer.Open(new Uri(localPath, UriKind.Absolute));
+                return;
+            }
+            catch { }
+        }
+
+        string normalizedUrl = NormalizeAudioUrl(track.Url);
+        if (!string.IsNullOrEmpty(normalizedUrl))
+        {
+            try
+            {
+                _mediaPlayer.Open(new Uri(normalizedUrl));
+            }
+            catch { }
+
+            _ = EnsureTrackCachedAsync(track);
+        }
+    }
+
+    private void MediaPlayer_MediaOpened(object? sender, EventArgs e)
+    {
+        if (_isPlaying && !_isMuted && _mediaPlayer.Volume < 0.05)
+        {
+            _mediaPlayer.Volume = _volume;
+        }
+
+        if (_mediaPlayer.NaturalDuration.HasTimeSpan)
+        {
+            var dur = _mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds;
+            if (dur > 0 && CurrentTrack != null)
+            {
+                CurrentTrack.DurationSeconds = dur;
+                int m = (int)(dur / 60);
+                int sec = (int)(dur % 60);
+                CurrentTrack.Duration = $"{m:D2}:{sec:D2}";
+                PositionChanged?.Invoke(_virtualPosition, dur);
+            }
+        }
+    }
+
+    private async void MediaPlayer_MediaFailed(object? sender, ExceptionEventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine($"MediaFailed: {e.ErrorException?.Message}");
+        var track = CurrentTrack;
+        if (track == null) return;
+
+        try
+        {
+            string? cachedPath = await EnsureTrackCachedAsync(track);
+            if (!string.IsNullOrEmpty(cachedPath) && File.Exists(cachedPath))
+            {
+                var app = Application.Current;
+                if (app != null)
+                {
+                    await app.Dispatcher.InvokeAsync(() =>
+                    {
+                        if (CurrentTrack?.Id == track.Id && _isPlaying)
+                        {
+                            _mediaPlayer.Open(new Uri(cachedPath, UriKind.Absolute));
+                            _mediaPlayer.Volume = _isMuted ? 0.0 : _volume;
+                            _mediaPlayer.Play();
+                        }
+                    });
+                }
+            }
+        }
+        catch { }
     }
 
     private void LoadInitialTracks()
@@ -119,7 +343,7 @@ public class AudioService
                                 Subtitle = subtitle,
                                 Duration = duration,
                                 DurationSeconds = durationSeconds,
-                                Url = trackUrl
+                                Url = NormalizeAudioUrl(trackUrl)
                             });
                         }
                     }
@@ -128,18 +352,18 @@ public class AudioService
         }
         catch { }
 
-        // Fallback default GitHub streaming tracks if playlist.json was missing or empty
+        // Fallback default CDN streaming tracks if playlist.json was missing or empty
         if (_tracks.Count == 0)
         {
             _tracks = new List<AudioTrack>
             {
-                new() { Id = "track-nature", Title = "Звуки природы", Url = "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/animals/birds.mp3", DurationSeconds = 128 },
-                new() { Id = "track-campfire", Title = "Костёр", Url = "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/nature/campfire.mp3", DurationSeconds = 202 },
-                new() { Id = "track-river", Title = "Река", Url = "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/nature/river.mp3", DurationSeconds = 243 },
-                new() { Id = "track-waterfall", Title = "Водопад", Url = "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/nature/waterfall.mp3", DurationSeconds = 34 },
-                new() { Id = "track-metropolis", Title = "Мегаполис", Url = "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/urban/busy-street.mp3", DurationSeconds = 145 },
-                new() { Id = "track-office", Title = "Офисный шум", Url = "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/places/office.mp3", DurationSeconds = 122 },
-                new() { Id = "track-brown-noise", Title = "Коричневый шум", Url = "https://raw.githubusercontent.com/remvze/moodist/main/public/sounds/noise/brown-noise.wav", DurationSeconds = 900 }
+                new() { Id = "track-nature", Title = "Звуки природы", Url = "https://cdn.jsdelivr.net/gh/remvze/moodist@main/public/sounds/animals/birds.mp3", DurationSeconds = 128 },
+                new() { Id = "track-campfire", Title = "Костёр", Url = "https://cdn.jsdelivr.net/gh/remvze/moodist@main/public/sounds/nature/campfire.mp3", DurationSeconds = 202 },
+                new() { Id = "track-river", Title = "Река", Url = "https://cdn.jsdelivr.net/gh/remvze/moodist@main/public/sounds/nature/river.mp3", DurationSeconds = 243 },
+                new() { Id = "track-waterfall", Title = "Водопад", Url = "https://cdn.jsdelivr.net/gh/remvze/moodist@main/public/sounds/nature/waterfall.mp3", DurationSeconds = 34 },
+                new() { Id = "track-metropolis", Title = "Мегаполис", Url = "https://cdn.jsdelivr.net/gh/remvze/moodist@main/public/sounds/urban/busy-street.mp3", DurationSeconds = 145 },
+                new() { Id = "track-office", Title = "Офисный шум", Url = "https://cdn.jsdelivr.net/gh/siwalikm/coffitivity-offline@master/assets/murmur.mp3", DurationSeconds = 1048 },
+                new() { Id = "track-brown-noise", Title = "Коричневый шум", Url = "https://cdn.jsdelivr.net/gh/remvze/moodist@main/public/sounds/noise/brown-noise.wav", DurationSeconds = 900 }
             };
         }
 
@@ -150,7 +374,7 @@ public class AudioService
     {
         try
         {
-            string url = !string.IsNullOrEmpty(customUrl) ? customUrl : DefaultPlaylistUrl;
+            string url = !string.IsNullOrEmpty(customUrl) ? NormalizeAudioUrl(customUrl) : DefaultPlaylistUrl;
             string json = await _httpClient.GetStringAsync(url);
 
             using var doc = JsonDocument.Parse(json);
@@ -177,7 +401,7 @@ public class AudioService
                             Subtitle = subtitle,
                             Duration = duration,
                             DurationSeconds = durationSeconds,
-                            Url = trackUrl
+                            Url = NormalizeAudioUrl(trackUrl)
                         });
                     }
                 }
@@ -186,12 +410,13 @@ public class AudioService
                 {
                     _tracks = remoteTracks;
                     PlaylistUpdated?.Invoke();
+                    _ = PrecacheAllTracksAsync();
                 }
             }
         }
         catch
         {
-            // Offline or repository raw file not yet published; initial playlist remains active
+            // Offline or repository raw file not reachable; local playlist remains active
         }
     }
 
@@ -199,15 +424,7 @@ public class AudioService
     {
         if (index < 0 || index >= _tracks.Count) return;
         var track = _tracks[index];
-
-        if (!string.IsNullOrEmpty(track.Url))
-        {
-            try
-            {
-                _mediaPlayer.Open(new Uri(track.Url));
-            }
-            catch { }
-        }
+        OpenTrack(track);
     }
 
     private void Timer_Tick(object? sender, EventArgs e)
@@ -223,28 +440,43 @@ public class AudioService
 
         if (elapsed < 0 || elapsed > 1.5) elapsed = 0.25;
 
-        // Loop current stream seamlessly if reaching file boundary
-        if (_mediaPlayer.NaturalDuration.HasTimeSpan)
+        try
         {
-            double dur = _mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds;
-            if (dur > 2.0 && _mediaPlayer.Position.TotalSeconds >= dur - 0.3)
+            // Loop current stream seamlessly if reaching file boundary
+            if (_mediaPlayer.NaturalDuration.HasTimeSpan)
             {
-                _virtualPosition = 0;
-                _mediaPlayer.Position = TimeSpan.Zero;
-                _mediaPlayer.Play();
+                double dur = _mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds;
+                if (dur > 2.0 && _mediaPlayer.Position.TotalSeconds >= dur - 0.3)
+                {
+                    _virtualPosition = 0;
+                    _mediaPlayer.Position = TimeSpan.Zero;
+                    _mediaPlayer.Play();
+                }
             }
-        }
 
-        _virtualPosition = _mediaPlayer.Position.TotalSeconds;
-        PositionChanged?.Invoke(_virtualPosition, track.DurationSeconds);
+            _virtualPosition = _mediaPlayer.Position.TotalSeconds;
+            PositionChanged?.Invoke(_virtualPosition, track.DurationSeconds);
+        }
+        catch { }
     }
 
     private void MediaPlayer_MediaEnded(object? sender, EventArgs e)
     {
-        // Loop current track seamlessly and continuously without stopping
-        _virtualPosition = 0;
-        _mediaPlayer.Position = TimeSpan.Zero;
-        _mediaPlayer.Play();
+        try
+        {
+            _virtualPosition = 0;
+            var track = CurrentTrack;
+            if (track != null && IsTrackCached(track, out string localPath))
+            {
+                if (_mediaPlayer.Source == null || !_mediaPlayer.Source.IsFile)
+                {
+                    _mediaPlayer.Open(new Uri(localPath, UriKind.Absolute));
+                }
+            }
+            _mediaPlayer.Position = TimeSpan.Zero;
+            _mediaPlayer.Play();
+        }
+        catch { }
     }
 
     private async Task FadeVolumeAsync(double fromVol, double toVol, int durationMs, CancellationToken ct)
@@ -297,12 +529,9 @@ public class AudioService
 
         _isPlaying = true;
 
-        if (!string.IsNullOrEmpty(track.Url))
+        if (_mediaPlayer.Source == null)
         {
-            if (_mediaPlayer.Source == null || !_mediaPlayer.Source.AbsoluteUri.Equals(track.Url, StringComparison.OrdinalIgnoreCase))
-            {
-                _mediaPlayer.Open(new Uri(track.Url));
-            }
+            OpenTrack(track);
         }
 
         _lastTickTime = DateTime.UtcNow;
@@ -314,6 +543,11 @@ public class AudioService
 
         double targetVol = _isMuted ? 0.0 : _volume;
         await FadeVolumeAsync(0.0, targetVol, 300, ct);
+
+        if (!ct.IsCancellationRequested && !_isMuted && _mediaPlayer.Volume < targetVol * 0.9)
+        {
+            _mediaPlayer.Volume = targetVol;
+        }
     }
 
     public void Play() => _ = PlayAsync();
@@ -384,9 +618,10 @@ public class AudioService
         _currentIndex = index;
         _virtualPosition = 0;
         _lastTickTime = DateTime.UtcNow;
-        PrepareTrack(_currentIndex);
 
         var track = _tracks[_currentIndex];
+        OpenTrack(track);
+
         TrackChanged?.Invoke(track);
         PositionChanged?.Invoke(0, track.DurationSeconds);
 
@@ -394,16 +629,15 @@ public class AudioService
         {
             _isPlaying = true;
             _mediaPlayer.Volume = 0.0;
-
-            if (!string.IsNullOrEmpty(track.Url))
-            {
-                _mediaPlayer.Open(new Uri(track.Url));
-                _mediaPlayer.Play();
-            }
-
+            _mediaPlayer.Play();
             _timer.Start();
             StateChanged?.Invoke(_isPlaying);
             await FadeVolumeAsync(0.0, targetVol, 420, ct);
+
+            if (!ct.IsCancellationRequested && !_isMuted && _mediaPlayer.Volume < targetVol * 0.9)
+            {
+                _mediaPlayer.Volume = targetVol;
+            }
         }
         else
         {

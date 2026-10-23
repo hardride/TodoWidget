@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private readonly UpdateService _updateService = new();
     private readonly AudioService _audioService = new();
     private bool _showingAudio;
+    private bool _isSettingsOpen;
     private bool _isDraggingAudioSlider;
     private bool _isDraggingVolumeSlider;
     private TaskbarIcon? _trayIcon;
@@ -106,6 +107,17 @@ public partial class MainWindow : Window
             if (OpacityValueText != null) OpacityValueText.Text = $"{(int)(savedOpacity * 100)}%";
         }
 
+        if (DimOnLostFocusCheckbox != null)
+        {
+            DimOnLostFocusCheckbox.IsChecked = _settings.DimOnLostFocus;
+        }
+        if (CompletedTasksCheckbox != null)
+        {
+            CompletedTasksCheckbox.IsChecked = _settings.HideCompletedTasks;
+        }
+        ApplyLanguage(_settings.Language);
+        SelectSettingsTab("General");
+
         UpdateBackgroundImage(_currentTheme);
         UpdateThemeCheckmarks();
         Loaded += MainWindow_Loaded;
@@ -141,8 +153,14 @@ public partial class MainWindow : Window
 
         MouseLeftButtonDown += (s, e) =>
         {
-            if (e.ChangedButton == MouseButton.Left)
-                DragMove();
+            if (e.ChangedButton == MouseButton.Left && e.ButtonState == MouseButtonState.Pressed)
+            {
+                try
+                {
+                    DragMove();
+                }
+                catch (InvalidOperationException) { }
+            }
         };
 
         MouseEnter += (s, e) => AnimateScrollBars(true);
@@ -257,29 +275,23 @@ public partial class MainWindow : Window
 
     private void UpdateHeaderIcons()
     {
+        var lang = _settings.Language;
         if (AudioButton != null)
         {
             AudioButton.Tag = _showingAudio ? "Active" : null;
-            AudioButton.ToolTip = _showingAudio ? "Закрыть плеер" : "Музыка для концентрации";
+            AudioButton.ToolTip = _showingAudio ? LocalizationService.Get("MusicTooltipClose", lang) : LocalizationService.Get("MusicTooltipOpen", lang);
         }
 
-        if (ThemeButton != null)
+        if (SettingsButton != null)
         {
-            ThemeButton.Tag = _showingThemes ? "Active" : null;
-            ThemeButton.ToolTip = _showingThemes ? "Закрыть темы" : "Темы оформления";
-        }
-
-        if (OpacityButton != null)
-        {
-            bool isOpacityOpen = (OpacitySliderBorder?.Visibility == Visibility.Visible);
-            OpacityButton.Tag = isOpacityOpen ? "Active" : null;
-            OpacityButton.ToolTip = isOpacityOpen ? "Скрыть ползунок" : "Прозрачность виджета";
+            SettingsButton.Tag = _isSettingsOpen ? "Active" : null;
+            SettingsButton.ToolTip = _isSettingsOpen ? LocalizationService.Get("HideSettingsTooltip", lang) : LocalizationService.Get("SettingsTooltip", lang);
         }
 
         if (PinButton != null)
         {
             PinButton.Tag = _isPinned ? "Active" : null;
-            PinButton.ToolTip = _isPinned ? "Открепить (поверх всех окон)" : "Закрепить поверх всех окон";
+            PinButton.ToolTip = _isPinned ? LocalizationService.Get("PinTooltipUnpin", lang) : LocalizationService.Get("PinTooltipPin", lang);
         }
 
         if (PinIconPath != null)
@@ -314,7 +326,7 @@ public partial class MainWindow : Window
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
         AnimateScrollBar(TasksScrollViewer, targetOpacity, duration, ease);
-        AnimateScrollBar(ThemesScrollViewer, targetOpacity, duration, ease);
+        AnimateScrollBar(SettingsScrollViewer, targetOpacity, duration, ease);
     }
 
     private void AnimateScrollBar(ScrollViewer? scrollViewer, double targetOpacity, TimeSpan duration, IEasingFunction ease)
@@ -371,6 +383,7 @@ public partial class MainWindow : Window
         double activeOpacity = OpacitySlider?.Value ?? 1.0;
         if (MainBorder != null) MainBorder.Opacity = activeOpacity;
         if (OutlineBorder != null) OutlineBorder.Opacity = activeOpacity;
+        if (SettingsClipContainer != null) SettingsClipContainer.Opacity = activeOpacity;
 
         if (IsMouseOver || MainBorder?.IsMouseOver == true)
         {
@@ -385,9 +398,15 @@ public partial class MainWindow : Window
         if (MainBorder != null && !_isDragging && !_isDraggingDeadline)
         {
             double baseOpacity = OpacitySlider?.Value ?? 1.0;
-            double inactiveOpacity = Math.Max(0.15, baseOpacity * 0.4);
+            double inactiveOpacity = _settings.DimOnLostFocus ? Math.Max(0.15, baseOpacity * 0.4) : baseOpacity;
             MainBorder.Opacity = inactiveOpacity;
             if (OutlineBorder != null) OutlineBorder.Opacity = inactiveOpacity;
+            if (SettingsClipContainer != null) SettingsClipContainer.Opacity = inactiveOpacity;
+
+            if (_isSettingsOpen)
+            {
+                ToggleSettings();
+            }
         }
     }
 
@@ -406,55 +425,7 @@ public partial class MainWindow : Window
     }
 
     // === Theme ===
-    private bool _showingThemes;
     private string _currentTheme = "Dark";
-
-    private void ThemeButton_Click(object sender, RoutedEventArgs e)
-    {
-        _showingThemes = !_showingThemes;
-
-        if (_showingThemes)
-        {
-            if (_showingAudio)
-            {
-                _showingAudio = false;
-                AudioView.Visibility = Visibility.Collapsed;
-            }
-            TasksView.Visibility = Visibility.Collapsed;
-            ThemesView.Visibility = Visibility.Visible;
-            HeaderTitle.Visibility = Visibility.Visible;
-            HeaderTitle.Text = "Themes";
-            TimerText.Visibility = Visibility.Collapsed;
-            TaskCounter.Visibility = Visibility.Collapsed;
-            UpdateThemeCheckmarks();
-        }
-        else
-        {
-            ThemesView.Visibility = Visibility.Collapsed;
-            TasksView.Visibility = Visibility.Visible;
-
-            if (_isUrgentMode)
-            {
-                HeaderTitle.Visibility = Visibility.Collapsed;
-                TaskCounter.Visibility = Visibility.Collapsed;
-                TimerText.Visibility = Visibility.Visible;
-                UpdateTimerDisplay();
-            }
-            else
-            {
-                HeaderTitle.Visibility = Visibility.Visible;
-                HeaderTitle.Text = "ADHD to-do";
-                TaskCounter.Visibility = Visibility.Visible;
-                TimerText.Visibility = Visibility.Collapsed;
-            }
-        }
-
-        UpdateHeaderIcons();
-        Dispatcher.BeginInvoke(new Action(() =>
-        {
-            AnimateScrollBars(IsMouseOver || MainBorder?.IsMouseOver == true);
-        }), System.Windows.Threading.DispatcherPriority.Loaded);
-    }
 
     private void DarkTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Dark");
     private void LightTheme_Click(object sender, MouseButtonEventArgs e) => ApplyTheme("Light");
@@ -505,10 +476,13 @@ public partial class MainWindow : Window
 
         if (MainBorder != null) MainBorder.Opacity = savedOpacity;
         if (OutlineBorder != null) OutlineBorder.Opacity = savedOpacity;
+        if (SettingsClipContainer != null) SettingsClipContainer.Opacity = savedOpacity;
 
         UpdateBackgroundImage(theme);
         UpdateHeaderIcons();
         UpdateThemeCheckmarks();
+        SelectSettingsTab(_currentSettingsTab);
+        BuildAudioTrackList();
     }
 
     private void UpdateBackgroundImage(string theme)
@@ -581,17 +555,12 @@ public partial class MainWindow : Window
 
         if (_showingAudio)
         {
-            if (_showingThemes)
-            {
-                _showingThemes = false;
-                ThemesView.Visibility = Visibility.Collapsed;
-            }
-            if (OpacitySliderBorder != null) OpacitySliderBorder.Visibility = Visibility.Collapsed;
+
 
             TasksView.Visibility = Visibility.Collapsed;
             AudioView.Visibility = Visibility.Visible;
             HeaderTitle.Visibility = Visibility.Visible;
-            HeaderTitle.Text = "Focus Music";
+            HeaderTitle.Text = LocalizationService.Get("FocusMusic", _settings.Language);
             TimerText.Visibility = Visibility.Collapsed;
             TaskCounter.Visibility = Visibility.Collapsed;
             BuildAudioTrackList();
@@ -857,15 +826,24 @@ public partial class MainWindow : Window
 
             var border = new Border
             {
-                Background = isCurrent
-                    ? (Brush)FindResource("bg/soft")
-                    : (Brush)FindResource("bg/task"),
                 CornerRadius = new CornerRadius(8),
                 Padding = new Thickness(8, 6, 8, 6),
                 MinHeight = 34,
                 Margin = new Thickness(0, 0, 0, 6),
                 Cursor = Cursors.Hand,
                 Tag = track
+            };
+            border.SetResourceReference(Border.BackgroundProperty, isCurrent ? "bg/soft" : "bg/task");
+
+            border.MouseEnter += (s, e) =>
+            {
+                border.SetResourceReference(Border.BackgroundProperty, "bg/soft");
+            };
+            border.MouseLeave += (s, e) =>
+            {
+                var cur = _audioService.CurrentTrack;
+                bool isCur = cur != null && cur.Id == track.Id;
+                border.SetResourceReference(Border.BackgroundProperty, isCur ? "bg/soft" : "bg/task");
             };
 
             var grid = new Grid();
@@ -877,11 +855,11 @@ public partial class MainWindow : Window
             var titleBlock = new TextBlock
             {
                 Text = track.Title,
-                Foreground = (Brush)FindResource("fg/primary"),
                 FontFamily = (FontFamily)FindResource("FontRegular"),
                 FontSize = 13,
                 TextTrimming = TextTrimming.CharacterEllipsis
             };
+            titleBlock.SetResourceReference(TextBlock.ForegroundProperty, "fg/primary");
 
             textStack.Children.Add(titleBlock);
 
@@ -896,13 +874,13 @@ public partial class MainWindow : Window
                 var waveIcon = new System.Windows.Shapes.Path
                 {
                     Data = (StreamGeometry)FindResource("AudioWaveformIcon"),
-                    Stroke = (Brush)FindResource("bg/checkbox-filled"),
                     StrokeThickness = 1.5,
                     Width = 14,
                     Height = 14,
                     Stretch = Stretch.Uniform,
                     VerticalAlignment = VerticalAlignment.Center
                 };
+                waveIcon.SetResourceReference(System.Windows.Shapes.Path.StrokeProperty, "bg/checkbox-filled");
                 rightStack.Children.Add(waveIcon);
             }
             else
@@ -910,7 +888,6 @@ public partial class MainWindow : Window
                 var playIcon = new System.Windows.Shapes.Path
                 {
                     Data = (StreamGeometry)FindResource("PlayIcon"),
-                    Stroke = (Brush)FindResource("fg/soft"),
                     StrokeThickness = 1.5,
                     Fill = Brushes.Transparent,
                     Width = 12,
@@ -918,6 +895,7 @@ public partial class MainWindow : Window
                     Stretch = Stretch.Uniform,
                     VerticalAlignment = VerticalAlignment.Center
                 };
+                playIcon.SetResourceReference(System.Windows.Shapes.Path.StrokeProperty, "fg/soft");
                 rightStack.Children.Add(playIcon);
             }
 
@@ -950,14 +928,6 @@ public partial class MainWindow : Window
         UpdateHeaderIcons();
     }
 
-    private void OpacityButton_Click(object sender, RoutedEventArgs e)
-    {
-        OpacitySliderBorder.Visibility = OpacitySliderBorder.Visibility == Visibility.Visible
-            ? Visibility.Collapsed
-            : Visibility.Visible;
-        UpdateHeaderIcons();
-    }
-
     private void OpacitySlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         _settings.Opacity = e.NewValue;
@@ -965,8 +935,279 @@ public partial class MainWindow : Window
             MainBorder.Opacity = e.NewValue;
         if (OutlineBorder != null)
             OutlineBorder.Opacity = e.NewValue;
+        if (SettingsClipContainer != null) SettingsClipContainer.Opacity = e.NewValue;
         if (OpacityValueText != null)
-            OpacityValueText.Text = $"{(int)(e.NewValue * 100)}%";
+            OpacityValueText.Text = $"{(int)Math.Round(e.NewValue * 100)}%";
+    }
+
+    private string _currentSettingsTab = "General";
+
+    private void TabBtnGeneral_Click(object sender, MouseButtonEventArgs e) => SelectSettingsTab("General");
+    private void TabBtnOpacity_Click(object sender, MouseButtonEventArgs e) => SelectSettingsTab("Opacity");
+    private void TabBtnThemes_Click(object sender, MouseButtonEventArgs e) => SelectSettingsTab("Themes");
+    private void TabBtnAbout_Click(object sender, MouseButtonEventArgs e) => SelectSettingsTab("About");
+
+    private void SelectSettingsTab(string tab)
+    {
+        _currentSettingsTab = tab;
+        if (TabBtnGeneral == null || TabBtnOpacity == null || TabBtnThemes == null || TabBtnAbout == null) return;
+
+        TabBtnGeneral.Background = Brushes.Transparent;
+        TabBtnGeneral.BorderBrush = Brushes.Transparent;
+        TabTxtGeneral.SetResourceReference(TextBlock.ForegroundProperty, "fg/secondary");
+        TabTxtGeneral.FontWeight = FontWeights.Normal;
+
+        TabBtnOpacity.Background = Brushes.Transparent;
+        TabBtnOpacity.BorderBrush = Brushes.Transparent;
+        TabTxtOpacity.SetResourceReference(TextBlock.ForegroundProperty, "fg/secondary");
+        TabTxtOpacity.FontWeight = FontWeights.Normal;
+
+        TabBtnThemes.Background = Brushes.Transparent;
+        TabBtnThemes.BorderBrush = Brushes.Transparent;
+        TabTxtThemes.SetResourceReference(TextBlock.ForegroundProperty, "fg/secondary");
+        TabTxtThemes.FontWeight = FontWeights.Normal;
+
+        TabBtnAbout.Background = Brushes.Transparent;
+        TabBtnAbout.BorderBrush = Brushes.Transparent;
+        TabTxtAbout.SetResourceReference(TextBlock.ForegroundProperty, "fg/secondary");
+        TabTxtAbout.FontWeight = FontWeights.Normal;
+
+        if (TabContentGeneral != null) TabContentGeneral.Visibility = Visibility.Collapsed;
+        if (TabContentOpacity != null) TabContentOpacity.Visibility = Visibility.Collapsed;
+        if (TabContentThemes != null) TabContentThemes.Visibility = Visibility.Collapsed;
+        if (TabContentAbout != null) TabContentAbout.Visibility = Visibility.Collapsed;
+
+        Border activeBtn;
+        TextBlock activeTxt;
+        FrameworkElement? activeContent;
+
+        switch (tab)
+        {
+            case "Opacity":
+                activeBtn = TabBtnOpacity;
+                activeTxt = TabTxtOpacity;
+                activeContent = TabContentOpacity;
+                break;
+            case "Themes":
+                activeBtn = TabBtnThemes;
+                activeTxt = TabTxtThemes;
+                activeContent = TabContentThemes;
+                break;
+            case "About":
+                activeBtn = TabBtnAbout;
+                activeTxt = TabTxtAbout;
+                activeContent = TabContentAbout;
+                break;
+            default:
+                activeBtn = TabBtnGeneral;
+                activeTxt = TabTxtGeneral;
+                activeContent = TabContentGeneral;
+                break;
+        }
+
+        activeBtn.Background = Brushes.Transparent;
+        activeBtn.SetResourceReference(Border.BorderBrushProperty, "fg/primary");
+        activeTxt.SetResourceReference(TextBlock.ForegroundProperty, "fg/primary");
+        activeTxt.FontWeight = FontWeights.SemiBold;
+        if (activeContent != null) activeContent.Visibility = Visibility.Visible;
+        activeBtn.BringIntoView();
+    }
+
+    private void TabsScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (TabsScrollViewer != null)
+        {
+            double newOffset = TabsScrollViewer.HorizontalOffset - (e.Delta * 0.6);
+            TabsScrollViewer.ScrollToHorizontalOffset(newOffset);
+            e.Handled = true;
+        }
+    }
+
+    private void DimOnLostFocusCheckbox_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox cb)
+        {
+            _settings.DimOnLostFocus = cb.IsChecked == true;
+            if (!IsActive)
+            {
+                double baseOpacity = OpacitySlider?.Value ?? 1.0;
+                double targetOpacity = _settings.DimOnLostFocus ? Math.Max(0.15, baseOpacity * 0.4) : baseOpacity;
+                if (MainBorder != null) MainBorder.Opacity = targetOpacity;
+                if (OutlineBorder != null) OutlineBorder.Opacity = targetOpacity;
+                if (SettingsClipContainer != null) SettingsClipContainer.Opacity = targetOpacity;
+            }
+        }
+    }
+
+    private void CompletedTasksCheckbox_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox cb)
+        {
+            _settings.HideCompletedTasks = cb.IsChecked == true;
+            RefreshList();
+        }
+    }
+
+    private void LangBtnEn_Click(object sender, MouseButtonEventArgs e) => SelectLanguage("en");
+    private void LangBtnRu_Click(object sender, MouseButtonEventArgs e) => SelectLanguage("ru");
+    private void LangBtnEs_Click(object sender, MouseButtonEventArgs e) => SelectLanguage("es");
+
+    private void SelectLanguage(string lang)
+    {
+        _settings.Language = lang;
+        ApplyLanguage(lang);
+    }
+
+    private void ApplyLanguage(string lang)
+    {
+        if (LangBtnEn == null || LangBtnRu == null || LangBtnEs == null) return;
+
+        LangBtnEn.Background = Brushes.Transparent;
+        LangBtnEn.BorderBrush = Brushes.Transparent;
+        LangTxtEn.SetResourceReference(TextBlock.ForegroundProperty, "fg/secondary");
+        LangTxtEn.FontWeight = FontWeights.Normal;
+
+        LangBtnRu.Background = Brushes.Transparent;
+        LangBtnRu.BorderBrush = Brushes.Transparent;
+        LangTxtRu.SetResourceReference(TextBlock.ForegroundProperty, "fg/secondary");
+        LangTxtRu.FontWeight = FontWeights.Normal;
+
+        LangBtnEs.Background = Brushes.Transparent;
+        LangBtnEs.BorderBrush = Brushes.Transparent;
+        LangTxtEs.SetResourceReference(TextBlock.ForegroundProperty, "fg/secondary");
+        LangTxtEs.FontWeight = FontWeights.Normal;
+
+        Border activeBtn;
+        TextBlock activeTxt;
+        switch (lang)
+        {
+            case "ru":
+                activeBtn = LangBtnRu;
+                activeTxt = LangTxtRu;
+                break;
+            case "es":
+                activeBtn = LangBtnEs;
+                activeTxt = LangTxtEs;
+                break;
+            default:
+                activeBtn = LangBtnEn;
+                activeTxt = LangTxtEn;
+                break;
+        }
+
+        activeBtn.SetResourceReference(Border.BackgroundProperty, "bg/widget");
+        activeBtn.SetResourceReference(Border.BorderBrushProperty, "border/widget");
+        activeTxt.SetResourceReference(TextBlock.ForegroundProperty, "fg/primary");
+        activeTxt.FontWeight = FontWeights.SemiBold;
+
+        UpdateLocalizedTexts();
+    }
+
+    private void UpdateLocalizedTexts()
+    {
+        var lang = _settings.Language;
+
+        if (SettingsTitleText != null) SettingsTitleText.Text = LocalizationService.Get("Settings", lang);
+        if (SettingsCloseButton != null) SettingsCloseButton.ToolTip = LocalizationService.Get("Close", lang);
+
+        if (TabTxtGeneral != null) TabTxtGeneral.Text = LocalizationService.Get("TabGeneral", lang);
+        if (TabTxtOpacity != null) TabTxtOpacity.Text = LocalizationService.Get("TabOpacity", lang);
+        if (TabTxtThemes != null) TabTxtThemes.Text = LocalizationService.Get("TabThemes", lang);
+        if (TabTxtAbout != null) TabTxtAbout.Text = LocalizationService.Get("TabAbout", lang);
+
+        if (LblGeneralTasks != null) LblGeneralTasks.Text = LocalizationService.Get("Tasks", lang);
+        if (LblCompletedTasksTitle != null) LblCompletedTasksTitle.Text = LocalizationService.Get("CompletedTasks", lang);
+        if (LblCompletedTasksDesc != null) LblCompletedTasksDesc.Text = LocalizationService.Get("CompletedTasksDesc", lang);
+        if (LblGeneralLanguage != null) LblGeneralLanguage.Text = LocalizationService.Get("Language", lang);
+
+        if (LblOpacityLevel != null) LblOpacityLevel.Text = LocalizationService.Get("OpacityLevel", lang);
+        if (LblWindowBehavior != null) LblWindowBehavior.Text = LocalizationService.Get("WindowBehavior", lang);
+        if (LblOnLostFocusTitle != null) LblOnLostFocusTitle.Text = LocalizationService.Get("OnLostFocus", lang);
+        if (LblOnLostFocusDesc != null) LblOnLostFocusDesc.Text = LocalizationService.Get("OnLostFocusDesc", lang);
+
+        if (LblThemesHeader != null) LblThemesHeader.Text = LocalizationService.Get("ThemesHeader", lang);
+
+        if (LblAboutHeader != null) LblAboutHeader.Text = LocalizationService.Get("AboutHeader", lang);
+        if (LblAboutDesc != null) LblAboutDesc.Text = LocalizationService.Get("AboutDesc", lang);
+
+        if (WatermarkText != null) WatermarkText.Text = LocalizationService.Get("AddTaskPlaceholder", lang);
+        if (ClearCompletedButton != null) ClearCompletedButton.Text = LocalizationService.Get("ClearAll", lang);
+        if (CloseButton != null) CloseButton.ToolTip = LocalizationService.Get("MinimizeToTray", lang);
+
+        UpdateHeaderIcons();
+
+        var completedCount = _todoService.GetAll().Count(t => t.IsCompleted);
+        if (CompletedText != null)
+        {
+            CompletedText.Text = LocalizationService.Get("CompletedFormat", lang, completedCount);
+        }
+    }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        ToggleSettings();
+    }
+
+    private void SettingsCloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (_isSettingsOpen)
+        {
+            ToggleSettings();
+        }
+    }
+
+    private void SettingsHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject dep && SettingsCloseButton != null && (dep == SettingsCloseButton || SettingsCloseButton.IsAncestorOf(dep)))
+        {
+            return;
+        }
+
+        if (e.ChangedButton == MouseButton.Left && e.ButtonState == MouseButtonState.Pressed)
+        {
+            e.Handled = true;
+            try
+            {
+                DragMove();
+            }
+            catch (InvalidOperationException) { }
+        }
+    }
+
+    private void ToggleSettings()
+    {
+        _isSettingsOpen = !_isSettingsOpen;
+        UpdateHeaderIcons();
+
+        if (_isSettingsOpen)
+        {
+            Width = 560;
+            SettingsClipContainer.Visibility = Visibility.Visible;
+
+            var panelAnim = new DoubleAnimation(-240, 0, TimeSpan.FromMilliseconds(240))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            SettingsPanelTranslate.BeginAnimation(TranslateTransform.XProperty, panelAnim);
+        }
+        else
+        {
+            var panelAnim = new DoubleAnimation(0, -240, TimeSpan.FromMilliseconds(200))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+            panelAnim.Completed += (s, e) =>
+            {
+                if (!_isSettingsOpen)
+                {
+                    SettingsClipContainer.Visibility = Visibility.Collapsed;
+                    Width = 320;
+                }
+            };
+            SettingsPanelTranslate.BeginAnimation(TranslateTransform.XProperty, panelAnim);
+        }
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -977,7 +1218,7 @@ public partial class MainWindow : Window
             _tile = null;
             tile.Close();
         }
-        _tile = new TileWindow(Left + Width / 2 - 16, Top + Height / 2 - 16, RestoreWidget, _isUrgentMode, _isPinned);
+        _tile = new TileWindow(Left + 160 - 16, Top + Height / 2 - 16, RestoreWidget, _isUrgentMode, _isPinned);
         _tile.Show();
         Hide();
     }
@@ -994,7 +1235,7 @@ public partial class MainWindow : Window
         {
             var tile = _tile;
             _tile = null;
-            double newLeft = tile.Left - Width / 2 + 16;
+            double newLeft = tile.Left - 160 + 16;
             double newTop = tile.Top - Height / 2 + 16;
             var screenWidth = SystemParameters.VirtualScreenWidth;
             var screenHeight = SystemParameters.VirtualScreenHeight;
@@ -1011,24 +1252,12 @@ public partial class MainWindow : Window
             MainBorder.Opacity = OpacitySlider.Value;
         if (OutlineBorder != null) OutlineBorder.Opacity = MainBorder?.Opacity ?? 1.0;
 
-        if (_showingThemes)
+        if (_showingAudio)
         {
-            if (AudioView != null) AudioView.Visibility = Visibility.Collapsed;
-            TasksView.Visibility = Visibility.Collapsed;
-            ThemesView.Visibility = Visibility.Visible;
-            HeaderTitle.Visibility = Visibility.Visible;
-            HeaderTitle.Text = "Themes";
-            TimerText.Visibility = Visibility.Collapsed;
-            TaskCounter.Visibility = Visibility.Collapsed;
-            UpdateThemeCheckmarks();
-        }
-        else if (_showingAudio)
-        {
-            ThemesView.Visibility = Visibility.Collapsed;
             TasksView.Visibility = Visibility.Collapsed;
             if (AudioView != null) AudioView.Visibility = Visibility.Visible;
             HeaderTitle.Visibility = Visibility.Visible;
-            HeaderTitle.Text = "Focus Music";
+            HeaderTitle.Text = LocalizationService.Get("FocusMusic", _settings.Language);
             TimerText.Visibility = Visibility.Collapsed;
             TaskCounter.Visibility = Visibility.Collapsed;
             BuildAudioTrackList();
@@ -1036,7 +1265,6 @@ public partial class MainWindow : Window
         else if (_isUrgentMode)
         {
             if (AudioView != null) AudioView.Visibility = Visibility.Collapsed;
-            ThemesView.Visibility = Visibility.Collapsed;
             TasksView.Visibility = Visibility.Visible;
             HeaderTitle.Visibility = Visibility.Collapsed;
             TaskCounter.Visibility = Visibility.Collapsed;
@@ -1046,7 +1274,6 @@ public partial class MainWindow : Window
         else
         {
             if (AudioView != null) AudioView.Visibility = Visibility.Collapsed;
-            ThemesView.Visibility = Visibility.Collapsed;
             TasksView.Visibility = Visibility.Visible;
             HeaderTitle.Visibility = Visibility.Visible;
             HeaderTitle.Text = "ADHD to-do";
@@ -1172,10 +1399,8 @@ public partial class MainWindow : Window
 
             if (wasCompleted)
             {
-                // Unchecking a completed task: return it to active list immediately
+                // Unchecking a completed task: return it to active list
                 _todoService.Toggle(id);
-                _todoService.MoveToTop(id);
-                OnActiveTaskAddedToTop();
                 RefreshList();
                 return;
             }
@@ -1223,12 +1448,7 @@ public partial class MainWindow : Window
                     if (finished) return;
                     finished = true;
 
-                    if (taskIndex >= 0)
-                    {
-                        OnActiveTaskRemoved(taskIndex);
-                    }
                     _todoService.Toggle(id);
-                    _todoService.MoveToTop(id);
 
                     if (_isUrgentMode || wasUrgent)
                     {
@@ -1240,6 +1460,13 @@ public partial class MainWindow : Window
 
                 strikeAnim.Completed += (s, ev) =>
                 {
+                    if (!_settings.HideCompletedTasks)
+                    {
+                        // When HideCompletedTasks is disabled, task stays strikethrough in place
+                        completeTask();
+                        return;
+                    }
+
                     // Smoothly collapse the card after strikethrough finishes
                     card.ClipToBounds = true;
                     double initialHeight = card.ActualHeight;
@@ -1296,12 +1523,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                if (taskIndex >= 0)
-                {
-                    OnActiveTaskRemoved(taskIndex);
-                }
                 _todoService.Toggle(id);
-                _todoService.MoveToTop(id);
 
                 if (_isUrgentMode || wasUrgent)
                 {
@@ -3253,61 +3475,12 @@ public partial class MainWindow : Window
     private void CleanupFinishedGroups()
     {
         var allTodos = _todoService.GetAll();
-        var activeTodos = allTodos.Where(t => !t.IsCompleted).ToList();
-        var slots = _settings.DeadlineSlots;
+        var validDeadlineIds = new HashSet<string>(_settings.DeadlineIds);
 
-        if (activeTodos.Count == 0)
+        foreach (var t in allTodos.Where(t => !string.IsNullOrEmpty(t.GroupDeadlineId) && !validDeadlineIds.Contains(t.GroupDeadlineId)))
         {
-            if (slots.Count > 0)
-            {
-                var allGrouped = allTodos.Where(t => !string.IsNullOrEmpty(t.GroupDeadlineId)).ToList();
-                foreach (var t in allGrouped)
-                {
-                    t.GroupDeadlineId = null;
-                    _todoService.UpdateGroupDeadlineId(t.Id, null);
-                }
-
-                _settings.DeadlineSlots = new List<int>();
-                _settings.DeadlineLabels = new List<string>();
-                _settings.DeadlineTimerEnds = new List<string?>();
-                _settings.DeadlineIds = new List<string>();
-            }
-            return;
-        }
-
-        var lines = new List<(int slot, string label, string? timerEnd, string id)>();
-        bool changed = false;
-
-        for (int i = 0; i < slots.Count; i++)
-        {
-            string id = _settings.GetDeadlineId(i);
-            string label = _settings.GetDeadlineLabel(i);
-            string? timerEnd = (i < _settings.DeadlineTimerEnds.Count) ? _settings.DeadlineTimerEnds[i] : null;
-
-            int activeGrouped = activeTodos.Count(t => t.GroupDeadlineId == id);
-            int totalGrouped = allTodos.Count(t => t.GroupDeadlineId == id);
-
-            // If a group had tasks and all of them are now closed (activeGrouped == 0): delete this title completely!
-            if (totalGrouped > 0 && activeGrouped == 0)
-            {
-                changed = true;
-                foreach (var t in allTodos.Where(t => t.GroupDeadlineId == id))
-                {
-                    t.GroupDeadlineId = null;
-                    _todoService.UpdateGroupDeadlineId(t.Id, null);
-                }
-                continue;
-            }
-
-            lines.Add((slots[i], label, timerEnd, id));
-        }
-
-        if (changed)
-        {
-            _settings.DeadlineSlots = lines.Select(x => x.slot).ToList();
-            _settings.DeadlineLabels = lines.Select(x => x.label).ToList();
-            _settings.DeadlineTimerEnds = lines.Select(x => x.timerEnd).ToList();
-            _settings.DeadlineIds = lines.Select(x => x.id).ToList();
+            t.GroupDeadlineId = null;
+            _todoService.UpdateGroupDeadlineId(t.Id, null);
         }
     }
 
@@ -3333,15 +3506,53 @@ public partial class MainWindow : Window
         }
         else
         {
-            var active = todos.Where(t => !t.IsCompleted).ToList();
+            var active = _settings.HideCompletedTasks ? todos.Where(t => !t.IsCompleted).ToList() : todos;
             var completed = todos.Where(t => t.IsCompleted).ToList();
 
-            if (active.Count > 0)
+            if (active.Count > 0 || _settings.DeadlineIds.Count > 0)
             {
-                var slots = _settings.DeadlineSlots.OrderBy(s => s).ToList();
+                var deadlineSlots = new List<(int lineIdx, int slot, string id)>();
+                for (int d = 0; d < _settings.DeadlineIds.Count; d++)
+                {
+                    string id = _settings.GetDeadlineId(d);
+                    int slot;
+                    int firstActiveIdx = active.FindIndex(t => t.GroupDeadlineId == id);
+                    if (firstActiveIdx >= 0)
+                    {
+                        slot = firstActiveIdx;
+                    }
+                    else
+                    {
+                        int firstTodoIdx = todos.FindIndex(t => t.GroupDeadlineId == id);
+                        if (firstTodoIdx >= 0)
+                        {
+                            var nextActive = todos.Skip(firstTodoIdx).FirstOrDefault(t => active.Contains(t));
+                            slot = (nextActive != null) ? active.IndexOf(nextActive) : active.Count;
+                        }
+                        else
+                        {
+                            int savedSlot = (d < _settings.DeadlineSlots.Count) ? _settings.DeadlineSlots[d] : active.Count;
+                            slot = Math.Clamp(savedSlot, 0, active.Count);
+                        }
+                    }
+
+                    if (deadlineSlots.Count > 0 && slot < deadlineSlots[^1].slot)
+                    {
+                        slot = deadlineSlots[^1].slot;
+                    }
+                    deadlineSlots.Add((d, slot, id));
+                }
+
+                var computedSlots = deadlineSlots.Select(x => x.slot).ToList();
+                if (!_settings.DeadlineSlots.SequenceEqual(computedSlots))
+                {
+                    _settings.DeadlineSlots = computedSlots;
+                }
+
                 var listItems = new List<object>();
+                var deadlineItems = new List<Models.DeadlineItem>();
                 int activeCount = active.Count;
-                int lineIndex = 0;
+                int dlPointer = 0;
                 var now = DateTime.UtcNow;
 
                 Models.DeadlineItem CreateDeadlineItem(int slot, int idx)
@@ -3381,27 +3592,28 @@ public partial class MainWindow : Window
                     };
                 }
 
-                var deadlineItems = new List<Models.DeadlineItem>();
                 for (int i = 0; i < activeCount; i++)
                 {
-                    while (lineIndex < slots.Count && slots[lineIndex] == i)
+                    while (dlPointer < deadlineSlots.Count && deadlineSlots[dlPointer].slot == i)
                     {
-                        var dlItem = CreateDeadlineItem(slots[lineIndex], lineIndex);
+                        var dlInfo = deadlineSlots[dlPointer];
+                        var dlItem = CreateDeadlineItem(dlInfo.slot, dlInfo.lineIdx);
                         deadlineItems.Add(dlItem);
                         listItems.Add(dlItem);
-                        lineIndex++;
+                        dlPointer++;
                     }
 
-                    active[i].IsAboveDeadline = (slots.Count == 0 || i < slots[0]);
+                    active[i].IsAboveDeadline = (dlPointer == 0);
                     listItems.Add(active[i]);
                 }
 
-                while (lineIndex < slots.Count)
+                while (dlPointer < deadlineSlots.Count)
                 {
-                    var dlItem = CreateDeadlineItem(Math.Min(slots[lineIndex], activeCount), lineIndex);
+                    var dlInfo = deadlineSlots[dlPointer];
+                    var dlItem = CreateDeadlineItem(activeCount, dlInfo.lineIdx);
                     deadlineItems.Add(dlItem);
                     listItems.Add(dlItem);
-                    lineIndex++;
+                    dlPointer++;
                 }
 
                 // Update grouping, corner radiuses and margins
@@ -3456,7 +3668,7 @@ public partial class MainWindow : Window
                 StartDeadlineTimerIfNeeded();
                 if (AddDeadlineFallback != null)
                 {
-                    AddDeadlineFallback.Visibility = (slots.Count == 0) ? Visibility.Visible : Visibility.Collapsed;
+                    AddDeadlineFallback.Visibility = (_settings.DeadlineIds.Count == 0) ? Visibility.Visible : Visibility.Collapsed;
                 }
             }
             else
@@ -3466,10 +3678,10 @@ public partial class MainWindow : Window
                 if (AddDeadlineFallback != null) AddDeadlineFallback.Visibility = Visibility.Collapsed;
             }
 
-            if (completed.Count > 0)
+            if (_settings.HideCompletedTasks && completed.Count > 0)
             {
                 CompletedSection.Visibility = Visibility.Visible;
-                CompletedText.Text = $"Завершенные ({completed.Count})";
+                CompletedText.Text = LocalizationService.Get("CompletedFormat", _settings.Language, completed.Count);
                 if (ClearCompletedButton != null)
                 {
                     ClearCompletedButton.BeginAnimation(UIElement.OpacityProperty, null);

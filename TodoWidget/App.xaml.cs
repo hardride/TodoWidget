@@ -43,6 +43,14 @@ public partial class App : Application
             catch (AbandonedMutexException) { }
         });
 
+        DispatcherUnhandledException += (s, args) =>
+        {
+            if (args.Exception is InvalidOperationException)
+            {
+                args.Handled = true;
+            }
+        };
+
         base.OnStartup(e);
     }
 
